@@ -490,26 +490,6 @@ export default function App() {
   }, [filteredUpdates]);
 
 
-  /* =========================================================
-     ACTIVE PROCESSES KPI
-     ========================================================= */
-
-  const activeProcessesCount =
-    useMemo(() => {
-
-      return Array.from(
-        new Set(
-          filteredUpdates
-            .map(
-              (u) =>
-                u.process
-            )
-            .filter(Boolean)
-        )
-      ).length;
-
-    }, [filteredUpdates]);
-
 
   /* =========================================================
      RENDER
@@ -681,14 +661,9 @@ export default function App() {
                 <div className="lg:col-span-4 h-full">
 
                   <KPICards
-                    totalPanels={
-                      totalPanels
-                    }
-
-                    activeProcesses={
-                      activeProcessesCount
-                    }
-                  />
+  totalPanels={totalPanels}
+  data={filteredUpdates}
+/>
 
                 </div>
 

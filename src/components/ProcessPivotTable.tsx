@@ -11,216 +11,168 @@ const PROCESSES = [
   'Powder Coating',
   'Assembly and Wiring',
   'Testing',
-  'Dispatch'
+  'Dispatch',
 ];
 
-const STATUSES = [
-  'Done',
-  'Pending',
-  'In Progress'
-];
+const PROCESS_SHORT_NAMES: Record<string, string> = {
+  'Quotation': 'Quotation',
+  'Fabrication': 'Fabrication',
+  'Powder Coating': 'Powder Coating',
+  'Assembly and Wiring': 'Assembly & Wiring',
+  'Testing': 'Testing',
+  'Dispatch': 'Dispatch',
+};
 
 export default function ProcessPivotTable({
-  data
+  data,
 }: ProcessPivotTableProps) {
 
-  const pivotData = useMemo(() => {
+  /* =========================================================
+     PROCESS SUMMARY
+     ========================================================= */
 
+  const processSummary = useMemo(() => {
     return PROCESSES.map((process) => {
 
       const processItems = data.filter(
         (item) => item.process === process
       );
 
+      const done = processItems.filter(
+        (item) => item.status === 'Done'
+      ).length;
+
+      const inProgress = processItems.filter(
+        (item) => item.status === 'In Progress'
+      ).length;
+
+      const pending = processItems.filter(
+        (item) => item.status === 'Pending'
+      ).length;
+
+      const total = done + inProgress + pending;
+
+      const completion =
+        total > 0
+          ? (done / total) * 100
+          : 0;
+
       return {
         process,
-
-        Done: processItems.filter(
-          (item) => item.status === 'Done'
-        ).length,
-
-        Pending: processItems.filter(
-          (item) => item.status === 'Pending'
-        ).length,
-
-        'In Progress': processItems.filter(
-          (item) => item.status === 'In Progress'
-        ).length,
-
-        Total: processItems.length
+        displayName:
+          PROCESS_SHORT_NAMES[process],
+        done,
+        inProgress,
+        pending,
+        total,
+        completion,
       };
-
     });
 
   }, [data]);
 
-  const grandTotal = useMemo(() => {
 
-    return pivotData.reduce(
-      (sum, row) => sum + row.Total,
-      0
-    );
-
-  }, [pivotData]);
+  /* =========================================================
+     RENDER
+     ========================================================= */
 
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
-      {/* Heading */}
-      <div className="flex items-center gap-2 mb-6">
+      {/* =====================================================
+          HEADER
+          ===================================================== */}
 
-        <div className="h-5 w-1 rounded bg-[#4f46e5]" />
+      <div className="mb-6 flex items-center gap-3">
 
-        <h2 className="font-sans text-base font-bold text-slate-800">
+        <div className="h-7 w-1 rounded-full bg-indigo-600" />
+
+        <h2 className="text-lg font-bold text-slate-900">
           Process Summary
         </h2>
 
       </div>
 
-      {/* Table */}
+
+      {/* =====================================================
+          TABLE
+          ===================================================== */}
+
       <div className="overflow-x-auto">
 
-        <table className="w-full border-collapse">
+        <table className="w-full min-w-[720px] border-collapse">
 
           <thead>
 
             <tr className="bg-[#0c1b3d] text-white">
 
-              <th
-                className="
-                  px-3 py-3
-                  text-left
-                  text-xs
-                  font-semibold
-                  text-white
-                  whitespace-nowrap
-                "
-              >
+              <th className="rounded-tl-lg px-4 py-4 text-left text-sm font-semibold">
                 Process
               </th>
 
-              <th
-                className="
-                  px-3 py-3
-                  text-center
-                  text-xs
-                  font-semibold
-                  text-white
-                "
-              >
+              <th className="px-4 py-4 text-center text-sm font-semibold">
                 Done
               </th>
 
-              <th
-                className="
-                  px-3 py-3
-                  text-center
-                  text-xs
-                  font-semibold
-                  text-white
-                "
-              >
-                Pending
-              </th>
-
-              <th
-                className="
-                  px-3 py-3
-                  text-center
-                  text-xs
-                  font-semibold
-                  text-white
-                  whitespace-nowrap
-                "
-              >
+              <th className="px-4 py-4 text-center text-sm font-semibold">
                 In Progress
               </th>
 
-              <th
-                className="
-                  px-3 py-3
-                  text-center
-                  text-xs
-                  font-semibold
-                  text-white
-                "
-              >
+              <th className="px-4 py-4 text-center text-sm font-semibold">
+                Pending
+              </th>
+
+              <th className="px-4 py-4 text-center text-sm font-semibold">
                 Total
+              </th>
+
+              <th className="rounded-tr-lg px-4 py-4 text-center text-sm font-semibold">
+                Completion
               </th>
 
             </tr>
 
           </thead>
 
+
           <tbody>
 
-            {pivotData.map((row) => (
+            {processSummary.map((item) => (
 
               <tr
-                key={row.process}
-                className="
-                  border-b
-                  border-slate-100
-                  hover:bg-slate-50
-                  transition
-                "
+                key={item.process}
+                className="border-b border-slate-100 last:border-b-0"
               >
 
-                <td
-                  className="
-                    px-3 py-3
-                    text-sm
-                    font-medium
-                    text-slate-700
-                    whitespace-nowrap
-                  "
-                >
-                  {row.process}
+                <td className="px-4 py-4 text-sm font-semibold text-slate-800">
+                  {item.displayName}
                 </td>
 
-                <td
-                  className="
-                    px-3 py-3
-                    text-center
-                    text-sm
-                    text-slate-600
-                  "
-                >
-                  {row.Done}
+
+                <td className="px-4 py-4 text-center text-sm text-slate-700">
+                  {item.done}
                 </td>
 
-                <td
-                  className="
-                    px-3 py-3
-                    text-center
-                    text-sm
-                    text-slate-600
-                  "
-                >
-                  {row.Pending}
+
+                <td className="px-4 py-4 text-center text-sm text-slate-700">
+                  {item.inProgress}
                 </td>
 
-                <td
-                  className="
-                    px-3 py-3
-                    text-center
-                    text-sm
-                    text-slate-600
-                  "
-                >
-                  {row['In Progress']}
+
+                <td className="px-4 py-4 text-center text-sm text-slate-700">
+                  {item.pending}
                 </td>
 
-                <td
-                  className="
-                    px-3 py-3
-                    text-center
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-                  {row.Total}
+
+                <td className="px-4 py-4 text-center text-sm font-semibold text-slate-800">
+                  {item.total}
+                </td>
+
+
+                <td className="px-4 py-4 text-center">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {item.completion.toFixed(1)}%
+                  </span>
                 </td>
 
               </tr>
@@ -229,94 +181,10 @@ export default function ProcessPivotTable({
 
           </tbody>
 
-          <tfoot>
-
-            <tr className="bg-slate-50">
-
-              <td
-                className="
-                  px-3 py-3
-                  text-sm
-                  font-bold
-                  text-slate-700
-                "
-              >
-                Grand Total
-              </td>
-
-              <td
-                className="
-                  px-3 py-3
-                  text-center
-                  text-sm
-                  font-bold
-                  text-slate-700
-                "
-              >
-                {pivotData.reduce(
-                  (sum, row) => sum + row.Done,
-                  0
-                )}
-              </td>
-
-              <td
-                className="
-                  px-3 py-3
-                  text-center
-                  text-sm
-                  font-bold
-                  text-slate-700
-                "
-              >
-                {pivotData.reduce(
-                  (sum, row) => sum + row.Pending,
-                  0
-                )}
-              </td>
-
-              <td
-                className="
-                  px-3 py-3
-                  text-center
-                  text-sm
-                  font-bold
-                  text-slate-700
-                "
-              >
-                {pivotData.reduce(
-                  (sum, row) =>
-                    sum + row['In Progress'],
-                  0
-                )}
-              </td>
-
-              <td
-                className="
-                  px-3 py-3
-                  text-center
-                  text-sm
-                  font-bold
-                  text-slate-800
-                "
-              >
-                {grandTotal}
-              </td>
-
-            </tr>
-
-          </tfoot>
-
         </table>
 
       </div>
 
-      {/* Empty state */}
-      {data.length === 0 && (
-        <div className="py-8 text-center text-sm text-slate-400">
-          No process data available.
-        </div>
-      )}
-
-    </div>
+    </div>  
   );
 }

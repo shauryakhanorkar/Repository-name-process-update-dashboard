@@ -36,7 +36,7 @@ export default function PanelPivotTable({ data }: PanelPivotTableProps) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[400px]">
+        <table className="w-full text-left border-collapse min-w-[300px]">
           <thead>
             {/* Main Header */}
             <tr className="bg-[#0c1b3d] text-white">
