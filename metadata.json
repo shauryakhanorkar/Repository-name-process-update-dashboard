@@ -1,0 +1,6 @@
+{
+  "name": "Process Update Dashboard",
+  "description": "Real-time tracking of operations across active projects and panels with Supabase integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
