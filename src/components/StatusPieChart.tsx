@@ -38,6 +38,12 @@ export default function StatusPieChart({
     }))
     .filter((item) => item.value > 0);
 
+  const leadingItem = formattedData.reduce(
+    (leading, item) =>
+      !leading || item.value > leading.value ? item : leading,
+    undefined as (typeof formattedData)[number] | undefined
+  );
+
   return (
     <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm h-full">
 
@@ -52,7 +58,7 @@ export default function StatusPieChart({
       <div className="flex flex-col items-center justify-center">
 
         {/* Pie Chart */}
-        <div className="h-[190px] w-[190px]">
+        <div className="relative h-[190px] w-[190px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -96,6 +102,17 @@ export default function StatusPieChart({
               />
             </PieChart>
           </ResponsiveContainer>
+
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span className="text-[28px] font-bold leading-none text-slate-800">
+              {leadingItem?.percentage?.toFixed(1) ?? '0.0'}%
+            </span>
+            <span className="mt-1 text-[13px] font-semibold leading-tight text-slate-500">
+              {leadingItem?.name === 'Done'
+                ? 'Completed'
+                : leadingItem?.name ?? 'Completed'}
+            </span>
+          </div>
         </div>
 
         {/* Legend */}
