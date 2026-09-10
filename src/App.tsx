@@ -31,7 +31,7 @@ import {
 export default function App() {
 
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'bom' | 'inventory'
+    'dashboard' | 'production' | 'notes' | 'dispatch' | 'bom' | 'inventory'
   >('dashboard');
 
   // Navigation is a drawer so the dashboard never loses horizontal space.
