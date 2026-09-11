@@ -1,0 +1,494 @@
+[1mdiff --git a/src/components/ReportsPage.tsx b/src/components/ReportsPage.tsx[m
+[1mindex 8075827..36e6bf1 100644[m
+[1m--- a/src/components/ReportsPage.tsx[m
+[1m+++ b/src/components/ReportsPage.tsx[m
+[36m@@ -1,46 +1,124 @@[m
+[31m-import React, { useMemo, useState } from 'react';[m
+[31m-import { Check, ChevronDown, FileBarChart2, Timer } from 'lucide-react';[m
+[31m-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';[m
+[32m+[m[32mimport { useMemo, useState } from 'react';[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  AlertTriangle,[m
+[32m+[m[32m  CalendarDays,[m
+[32m+[m[32m  CheckCircle2,[m
+[32m+[m[32m  ChevronDown,[m
+[32m+[m[32m  Factory,[m
+[32m+[m[32m  FileBarChart2,[m
+[32m+[m[32m  PauseCircle,[m
+[32m+[m[32m  Search,[m
+[32m+[m[32m  Timer,[m
+[32m+[m[32m} from 'lucide-react';[m
+[32m+[m[32mimport { PROCESS_OPTIONS } from '../constants/processes';[m
+ import { ProjectUpdate } from '../types';[m
+ [m
+ interface ReportsPageProps {[m
+   data: ProjectUpdate[];[m
+ }[m
+ [m
+[31m-const PROCESS_STAGES = ['Quotation', 'Fabrication', 'Powder Coating', 'Assembly and Wiring', 'Testing', 'Dispatch'] as const;[m
+[31m-type ProcessStage = (typeof PROCESS_STAGES)[number];[m
+[32m+[m[32mtype ReportStatus = 'Completed' | 'In Production' | 'Delayed' | 'On Hold' | 'Pending';[m
+ [m
+[31m-const STATUS_COLORS = { Completed: '#10b981', 'In Progress': '#3b82f6', 'On Hold': '#f59e0b' };[m
+[32m+[m[32minterface ReportOrder {[m
+[32m+[m[32m  soNumber: string;[m
+[32m+[m[32m  updates: ProjectUpdate[];[m
+[32m+[m[32m  latest: ProjectUpdate | null;[m
+[32m+[m[32m  panel: ProjectUpdate | undefined;[m
+[32m+[m[32m  status: ReportStatus;[m
+[32m+[m[32m  currentProcess: string;[m
+[32m+[m[32m}[m
+ [m
+ function normalizeProcess(process: string): string {[m
+[31m-  return process.replace(/\s+updates?$/i, '').replace('Assembly & Wiring', 'Assembly and Wiring').trim();[m
+[32m+[m[32m  return process[m
+[32m+[m[32m    .replace(/\s+updates?$/i, '')[m
+[32m+[m[32m    .replace('Assembly & Wiring', 'Assembly and Wiring')[m
+[32m+[m[32m    .trim();[m
+ }[m
+ [m
+ function updateTime(update: ProjectUpdate): number {[m
+[31m-  const value = Date.parse(update.timestamp || update.date);[m
+[31m-  return Number.isNaN(value) ? 0 : value;[m
+[32m+[m[32m  const parsed = Date.parse(update.timestamp || update.date);[m
+[32m+[m[32m  return Number.isNaN(parsed) ? 0 : parsed;[m
+ }[m
+ [m
+ function latestUpdate(updates: ProjectUpdate[]): ProjectUpdate | null {[m
+[31m-  return updates.reduce<ProjectUpdate | null>((latest, update) => !latest || updateTime(update) >= updateTime(latest) ? update : latest, null);[m
+[32m+[m[32m  return updates.reduce<ProjectUpdate | null>([m
+[32m+[m[32m    (latest, update) => (!latest || updateTime(update) >= updateTime(latest) ? update : latest),[m
+[32m+[m[32m    null,[m
+[32m+[m[32m  );[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction formatDate(value: number): string {[m
+[32m+[m[32m  if (!value) return 'Not available';[m
+[32m+[m[32m  return new Date(value).toLocaleDateString('en-IN', {[m
+[32m+[m[32m    day: '2-digit',[m
+[32m+[m[32m    month: 'short',[m
+[32m+[m[32m    year: 'numeric',[m
+[32m+[m[32m  });[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction formatDateTime(update: ProjectUpdate | null): string {[m
+[32m+[m[32m  if (!update) return 'Not available';[m
+[32m+[m[32m  const value = updateTime(update);[m
+[32m+[m[32m  if (!value) return update.timestamp || update.date || 'Not available';[m
+[32m+[m[32m  return new Date(value).toLocaleString('en-IN', {[m
+[32m+[m[32m    day: '2-digit',[m
+[32m+[m[32m    month: 'short',[m
+[32m+[m[32m    year: 'numeric',[m
+[32m+[m[32m    hour: '2-digit',[m
+[32m+[m[32m    minute: '2-digit',[m
+[32m+[m[32m  });[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction reportStatus(updates: ProjectUpdate[]): ReportStatus {[m
+[32m+[m[32m  const status = latestUpdate(updates)?.status?.toLowerCase() || '';[m
+[32m+[m[32m  if (status === 'done' || status === 'completed') return 'Completed';[m
+[32m+[m[32m  if (status.includes('delay')) return 'Delayed';[m
+[32m+[m[32m  if (status === 'on hold') return 'On Hold';[m
+[32m+[m[32m  if (status === 'in progress') return 'In Production';[m
+[32m+[m[32m  return 'Pending';[m
+ }[m
+ [m
+[31m-function formatDate(update: ProjectUpdate | null): string {[m
+[31m-  if (!update) return 'No update recorded';[m
+[31m-  const value = update.timestamp || update.date;[m
+[31m-  const parsed = new Date(value);[m
+[31m-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });[m
+[32m+[m[32mfunction statusClasses(status: ReportStatus): string {[m
+[32m+[m[32m  if (status === 'Completed') return 'bg-emerald-50 text-emerald-700 ring-emerald-100';[m
+[32m+[m[32m  if (status === 'In Production') return 'bg-cyan-50 text-cyan-700 ring-cyan-100';[m
+[32m+[m[32m  if (status === 'Delayed') return 'bg-red-50 text-red-700 ring-red-100';[m
+[32m+[m[32m  if (status === 'On Hold') return 'bg-amber-50 text-amber-700 ring-amber-100';[m
+[32m+[m[32m  return 'bg-slate-100 text-slate-600 ring-slate-200';[m
+ }[m
+ [m
+[31m-function orderStatus(updates: ProjectUpdate[]): string {[m
+[31m-  return latestUpdate(updates)?.status || 'Pending';[m
+[32m+[m[32mfunction StatusBadge({ status }: { status: ReportStatus }) {[m
+[32m+[m[32m  return ([m
+[32m+[m[32m    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusClasses(status)}`}>[m
+[32m+[m[32m      {status}[m
+[32m+[m[32m    </span>[m
+[32m+[m[32m  );[m
+ }[m
+ [m
+[31m-function StatCard({ label, value, tone }: { label: string; value: number; tone: string }) {[m
+[31m-  return <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{value}</p><div className={`mt-4 h-1 w-12 rounded-full ${tone}`} /></div>;[m
+[32m+[m[32mfunction ExecutiveKpiCard({[m
+[32m+[m[32m  label,[m
+[32m+[m[32m  value,[m
+[32m+[m[32m  detail,[m
+[32m+[m[32m  icon: Icon,[m
+[32m+[m[32m  tone,[m
+[32m+[m[32m}: {[m
+[32m+[m[32m  label: string;[m
+[32m+[m[32m  value: number;[m
+[32m+[m[32m  detail: string;[m
+[32m+[m[32m  icon: typeof Factory;[m
+[32m+[m[32m  tone: string;[m
+[32m+[m[32m}) {[m
+[32m+[m[32m  return ([m
+[32m+[m[32m    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">[m
+[32m+[m[32m      <div className="flex items-start justify-between gap-3">[m
+[32m+[m[32m        <div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{value}</p><p className="mt-1 text-xs font-medium text-slate-400">{detail}</p></div>[m
+[32m+[m[32m        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${tone}`}><Icon className="h-4 w-4" /></div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  );[m
+ }[m
+ [m
+ export default function ReportsPage({ data }: ReportsPageProps) {[m
+[32m+[m[32m  const [dateRange, setDateRange] = useState('All time');[m
+   const [selectedSO, setSelectedSO] = useState('All');[m
+   const [selectedPanel, setSelectedPanel] = useState('All');[m
+   const [selectedProcess, setSelectedProcess] = useState('All');[m
+[36m@@ -49,82 +127,290 @@[m [mexport default function ReportsPage({ data }: ReportsPageProps) {[m
+   const orders = useMemo(() => {[m
+     const grouped = new Map<string, ProjectUpdate[]>();[m
+     data.forEach((update) => {[m
+[31m-      const so = update.soNumber.trim();[m
+[31m-      if (!so) return;[m
+[31m-      grouped.set(so, [...(grouped.get(so) || []), update]);[m
+[32m+[m[32m      const soNumber = update.soNumber.trim();[m
+[32m+[m[32m      if (!soNumber) return;[m
+[32m+[m[32m      grouped.set(soNumber, [...(grouped.get(soNumber) || []), update]);[m
+     });[m
+     return Array.from(grouped, ([soNumber, updates]) => ({ soNumber, updates }));[m
+   }, [data]);[m
+ [m
+   const options = useMemo(() => ({[m
+[31m-    soNumbers: orders.map((order) => order.soNumber),[m
+[31m-    panels: Array.from(new Set(data.flatMap((item) => [item.panelName, item.panelType]).filter(Boolean))).sort(),[m
+[31m-    processes: Array.from(new Set(data.map((item) => normalizeProcess(item.process)).filter(Boolean))).sort(),[m
+[31m-    statuses: Array.from(new Set(data.map((item) => item.status).filter(Boolean))).sort(),[m
+[32m+[m[32m    soNumbers: orders[m
+[32m+[m[32m      .map(({ soNumber }) => soNumber)[m
+[32m+[m[32m      .sort((left, right) => left.localeCompare(right, undefined, { numeric: true })),[m
+[32m+[m[32m    panels: Array.from(new Set([m
+[32m+[m[32m      data.flatMap((item) => [item.panelName, item.panelType, item.otherPanelTypes]).filter(Boolean),[m
+[32m+[m[32m    )).sort(),[m
+[32m+[m[32m    processes: Array.from(new Set(data.map((item) => normalizeProcess(item.process)).filter(Boolean)))[m
+[32m+[m[32m      .sort((left, right) => {[m
+[32m+[m[32m        const leftIndex = PROCESS_OPTIONS.indexOf(left as (typeof PROCESS_OPTIONS)[number]);[m
+[32m+[m[32m        const rightIndex = PROCESS_OPTIONS.indexOf(right as (typeof PROCESS_OPTIONS)[number]);[m
+[32m+[m[32m        return (leftIndex < 0 ? PROCESS_OPTIONS.length : leftIndex) - (rightIndex < 0 ? PROCESS_OPTIONS.length : rightIndex)[m
+[32m+[m[32m          || left.localeCompare(right);[m
+[32m+[m[32m      }),[m
+[32m+[m[32m    statuses: ['Completed', 'In Production', 'Delayed', 'On Hold', 'Pending'],[m
+   }), [data, orders]);[m
+ [m
+[31m-  const filteredUpdates = useMemo(() => data.filter((update) => {[m
+[31m-    const process = normalizeProcess(update.process);[m
+[31m-    return (selectedSO === 'All' || update.soNumber === selectedSO) &&[m
+[31m-      (selectedPanel === 'All' || update.panelName === selectedPanel || update.panelType === selectedPanel) &&[m
+[31m-      (selectedProcess === 'All' || process === selectedProcess) &&[m
+[31m-      (selectedStatus === 'All' || update.status === selectedStatus);[m
+[31m-  }), [data, selectedSO, selectedPanel, selectedProcess, selectedStatus]);[m
+[31m-[m
+[31m-  const filteredOrders = useMemo(() => orders.filter((order) => filteredUpdates.some((update) => update.soNumber === order.soNumber)), [orders, filteredUpdates]);[m
+[31m-  const statusCounts = useMemo(() => ({[m
+[31m-    Completed: filteredUpdates.filter((item) => item.status === 'Done' || item.status === 'Completed').length,[m
+[31m-    'In Progress': filteredUpdates.filter((item) => item.status === 'In Progress').length,[m
+[31m-    'On Hold': filteredUpdates.filter((item) => item.status === 'On Hold').length,[m
+[31m-  }), [filteredUpdates]);[m
+[31m-  const chartData = Object.entries(statusCounts).map(([name, value]) => ({ name: name as keyof typeof STATUS_COLORS, value }));[m
+[31m-  const chartTotal = chartData.reduce((sum, item) => sum + item.value, 0);[m
+[31m-[m
+[31m-  const processSummary = useMemo(() => PROCESS_STAGES.map((stage) => {[m
+[31m-    const update = latestUpdate(filteredUpdates.filter((item) => normalizeProcess(item.process) === stage));[m
+[31m-    return { stage, update };[m
+[31m-  }), [filteredUpdates]);[m
+[31m-[m
+[31m-  const currentProcess = (updates: ProjectUpdate[]): ProcessStage | null => {[m
+[31m-    const update = latestUpdate(updates.filter((item) => PROCESS_STAGES.includes(normalizeProcess(item.process) as ProcessStage)));[m
+[31m-    const process = normalizeProcess(update?.process || '') as ProcessStage;[m
+[31m-    return PROCESS_STAGES.includes(process) ? process : null;[m
+[31m-  };[m
+[32m+[m[32m  const filteredUpdates = useMemo(() => {[m
+[32m+[m[32m    const now = Date.now();[m
+[32m+[m[32m    const rangeStart = dateRange === 'Last 7 days'[m
+[32m+[m[32m      ? now - 7 * 86400000[m
+[32m+[m[32m      : dateRange === 'Last 30 days'[m
+[32m+[m[32m        ? now - 30 * 86400000[m
+[32m+[m[32m        : dateRange === 'This year'[m
+[32m+[m[32m          ? new Date(new Date().getFullYear(), 0, 1).getTime()[m
+[32m+[m[32m          : 0;[m
+[32m+[m
+[32m+[m[32m    return data.filter((update) => {[m
+[32m+[m[32m      const process = normalizeProcess(update.process);[m
+[32m+[m[32m      const time = updateTime(update);[m
+[32m+[m[32m      return (!rangeStart || (time >= rangeStart && time <= now))[m
+[32m+[m[32m        && (selectedSO === 'All' || update.soNumber === selectedSO)[m
+[32m+[m[32m        && (selectedPanel === 'All'[m
+[32m+[m[32m          || update.panelName === selectedPanel[m
+[32m+[m[32m          || update.panelType === selectedPanel[m
+[32m+[m[32m          || update.otherPanelTypes === selectedPanel)[m
+[32m+[m[32m        && (selectedProcess === 'All' || process === selectedProcess)[m
+[32m+[m[32m        && (selectedStatus === 'All' || reportStatus([update]) === selectedStatus);[m
+[32m+[m[32m    });[m
+[32m+[m[32m  }, [data, dateRange, selectedPanel, selectedProcess, selectedSO, selectedStatus]);[m
+[32m+[m
+[32m+[m[32m  const orderRows = useMemo<ReportOrder[]>(() => {[m
+[32m+[m[32m    return orders[m
+[32m+[m[32m      .map((order) => {[m
+[32m+[m[32m        const updates = filteredUpdates.filter((update) => update.soNumber === order.soNumber);[m
+[32m+[m[32m        const latest = latestUpdate(updates);[m
+[32m+[m[32m        return {[m
+[32m+[m[32m          ...order,[m
+[32m+[m[32m          updates,[m
+[32m+[m[32m          latest,[m
+[32m+[m[32m          panel: updates.find((update) => update.panelName || update.panelType),[m
+[32m+[m[32m          status: reportStatus(updates),[m
+[32m+[m[32m          currentProcess: normalizeProcess(latest?.process || '') || 'Not available',[m
+[32m+[m[32m        };[m
+[32m+[m[32m      })[m
+[32m+[m[32m      .filter((order) => order.updates.length > 0);[m
+[32m+[m[32m  }, [filteredUpdates, orders]);[m
+[32m+[m
+[32m+[m[32m  const kpis = useMemo(() => ({[m
+[32m+[m[32m    total: orderRows.length,[m
+[32m+[m[32m    completed: orderRows.filter((row) => row.status === 'Completed').length,[m
+[32m+[m[32m    inProduction: orderRows.filter((row) => row.status === 'In Production').length,[m
+[32m+[m[32m    delayed: orderRows.filter((row) => row.status === 'Delayed').length,[m
+[32m+[m[32m    onHold: orderRows.filter((row) => row.status === 'On Hold').length,[m
+[32m+[m[32m  }), [orderRows]);[m
+[32m+[m
+[32m+[m[32m  const processPerformance = useMemo(() => PROCESS_OPTIONS.map((stage) => {[m
+[32m+[m[32m    const relevantOrders = orderRows.filter((order) => order.updates.some((update) => normalizeProcess(update.process) === stage));[m
+[32m+[m[32m    const completed = relevantOrders.filter((order) => {[m
+[32m+[m[32m      const stageUpdate = latestUpdate(order.updates.filter((update) => normalizeProcess(update.process) === stage));[m
+[32m+[m[32m      return stageUpdate?.status === 'Done' || stageUpdate?.status === 'Completed';[m
+[32m+[m[32m    }).length;[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      stage,[m
+[32m+[m[32m      percentage: relevantOrders.length ? Math.round((completed / relevantOrders.length) * 100) : 0,[m
+[32m+[m[32m      count: relevantOrders.length,[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }), [orderRows]);[m
+[32m+[m
+[32m+[m[32m  const insights = useMemo(() => {[m
+[32m+[m[32m    const durations = orderRows.map((row) => {[m
+[32m+[m[32m      const times = row.updates.map(updateTime).filter(Boolean);[m
+[32m+[m[32m      return times.length > 1 ? (Math.max(...times) - Math.min(...times)) / 86400000 : null;[m
+[32m+[m[32m    }).filter((value): value is number => value !== null);[m
+[32m+[m[32m    const delayedProcesses = new Map<string, { count: number; latestDelay: number }>();[m
+[32m+[m[32m    filteredUpdates[m
+[32m+[m[32m      .filter((update) => reportStatus([update]) === 'Delayed')[m
+[32m+[m[32m      .forEach((update) => {[m
+[32m+[m[32m        const process = normalizeProcess(update.process) || 'Unknown';[m
+[32m+[m[32m        const current = delayedProcesses.get(process) || { count: 0, latestDelay: 0 };[m
+[32m+[m[32m        current.count += 1;[m
+[32m+[m[32m        current.latestDelay = Math.max(current.latestDelay, updateTime(update));[m
+[32m+[m[32m        delayedProcesses.set(process, current);[m
+[32m+[m[32m      });[m
+[32m+[m[32m    const mostDelayed = Array.from(delayedProcesses.entries())[m
+[32m+[m[32m      .sort((left, right) => right[1].count - left[1].count || right[1].latestDelay - left[1].latestDelay)[0];[m
+[32m+[m[32m    const completedDispatches = orderRows.filter((row) => {[m
+[32m+[m[32m      const dispatch = latestUpdate(row.updates.filter((update) => normalizeProcess(update.process) === 'Dispatch'));[m
+[32m+[m[32m      return dispatch?.status === 'Done' || dispatch?.status === 'Completed';[m
+[32m+[m[32m    }).length;[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      average: durations.length[m
+[32m+[m[32m        ? `${(durations.reduce((sum, value) => sum + value, 0) / durations.length).toFixed(1)} days`[m
+[32m+[m[32m        : 'Not available',[m
+[32m+[m[32m      mostDelayed,[m
+[32m+[m[32m      completedDispatches,[m
+[32m+[m[32m      onTimeDispatch: 0,[m
+[32m+[m[32m      dispatchSubtitle: completedDispatches ? 'Expected dispatch dates unavailable' : 'No completed dispatches',[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }, [filteredUpdates, orderRows]);[m
+[32m+[m
+[32m+[m[32m  const percentage = (value: number) => (kpis.total ? Math.round((value / kpis.total) * 100) : 0);[m
+[32m+[m
+[32m+[m[32m  const filterSelect = ([m
+[32m+[m[32m    label: string,[m
+[32m+[m[32m    value: string,[m
+[32m+[m[32m    setter: (value: string) => void,[m
+[32m+[m[32m    values: string[],[m
+[32m+[m[32m  ) => ([m
+[32m+[m[32m    <label className="relative min-w-0 text-xs font-semibold text-slate-500">[m
+[32m+[m[32m      <span className="mb-1.5 block">{label}</span>[m
+[32m+[m[32m      <span className="relative block">[m
+[32m+[m[32m        <select[m
+[32m+[m[32m          value={value}[m
+[32m+[m[32m          onChange={(event) => setter(event.target.value)}[m
+[32m+[m[32m          className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 pr-8 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          {values.map((option) => ([m
+[32m+[m[32m            <option key={option} value={option}>{option === 'All' ? `All ${label}s` : option}</option>[m
+[32m+[m[32m          ))}[m
+[32m+[m[32m        </select>[m
+[32m+[m[32m        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />[m
+[32m+[m[32m      </span>[m
+[32m+[m[32m    </label>[m
+[32m+[m[32m  );[m
+ [m
+   return ([m
+     <div className="space-y-6">[m
+[31m-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0d1e3d] to-[#1a355e] p-6 text-white shadow-xl sm:p-8">[m
+[31m-        <div className="relative flex items-center gap-3"><FileBarChart2 className="h-5 w-5 text-cyan-300" /><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Operations · Intelligence</p><h1 className="mt-2 text-3xl font-extrabold tracking-tight">Reports</h1><p className="mt-1 text-sm text-slate-300">Production and process performance reports</p></div></div>[m
+[31m-        <div className="relative mt-6 grid grid-cols-1 gap-3 border-t border-white/10 pt-5 sm:grid-cols-2 lg:grid-cols-4">[m
+[31m-          {[[m
+[31m-            ['S.O. Number', selectedSO, setSelectedSO, ['All', ...options.soNumbers]],[m
+[31m-            ['Panel', selectedPanel, setSelectedPanel, ['All', ...options.panels]],[m
+[31m-            ['Process', selectedProcess, setSelectedProcess, ['All', ...options.processes]],[m
+[31m-            ['Status', selectedStatus, setSelectedStatus, ['All', ...options.statuses]],[m
+[31m-          ].map(([label, value, setter, values]) => <label key={label as string} className="relative min-w-0 text-xs font-medium text-slate-300"><span className="mb-1.5 block">{label as string}</span><span className="relative block"><select value={value as string} onChange={(event) => (setter as (value: string) => void)(event.target.value)} className="w-full appearance-none rounded-xl border border-white/10 bg-white/10 px-3 py-3 pr-9 text-sm text-white outline-none focus:border-cyan-300/70 focus:ring-2 focus:ring-cyan-300/20">{(values as string[]).map((option) => <option key={option} value={option} className="bg-[#122445] text-white">{option === 'All' ? `All ${label as string}s` : option}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" /></span></label>)}[m
+[32m+[m[32m      <section className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">[m
+[32m+[m[32m        <div>[m
+[32m+[m[32m          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">[m
+[32m+[m[32m            <FileBarChart2 className="h-4 w-4" /> Analytics workspace[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Reports &amp; Analytics</h1>[m
+[32m+[m[32m          <p className="mt-1 text-sm text-slate-500">Production performance, delays and historical insights</p>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m        <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:w-auto lg:grid-cols-5">[m
+[32m+[m[32m          {filterSelect('Date Range', dateRange, setDateRange, ['All time', 'Last 7 days', 'Last 30 days', 'This year'])}[m
+[32m+[m[32m          {filterSelect('S.O. Number', selectedSO, setSelectedSO, ['All', ...options.soNumbers])}[m
+[32m+[m[32m          {filterSelect('Panel', selectedPanel, setSelectedPanel, ['All', ...options.panels])}[m
+[32m+[m[32m          {filterSelect('Process', selectedProcess, setSelectedProcess, ['All', ...options.processes])}[m
+[32m+[m[32m          {filterSelect('Status', selectedStatus, setSelectedStatus, ['All', ...options.statuses])}[m
+         </div>[m
+       </section>[m
+ [m
+[31m-      {data.length === 0 && ([m
+[31m-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">[m
+[31m-          No report data available.[m
+[32m+[m[32m      {!orderRows.length && ([m
+[32m+[m[32m        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">[m
+[32m+[m[32m          No report data available for the selected filters.[m
+         </div>[m
+       )}[m
+ [m
+[31m-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">[m
+[31m-        <StatCard label="Total S.O." value={filteredOrders.length} tone="bg-blue-500" />[m
+[31m-        <StatCard label="In Production" value={filteredOrders.filter((order) => order.updates.some((item) => item.status === 'In Progress')).length} tone="bg-cyan-500" />[m
+[31m-        <StatCard label="Completed" value={filteredOrders.filter((order) => orderStatus(order.updates) === 'Done' || orderStatus(order.updates) === 'Completed').length} tone="bg-emerald-500" />[m
+[31m-        <StatCard label="On Hold" value={filteredOrders.filter((order) => orderStatus(order.updates) === 'On Hold').length} tone="bg-amber-500" />[m
+[32m+[m[32m      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">[m
+[32m+[m[32m        <ExecutiveKpiCard label="Total S.O." value={kpis.total} detail="Filtered sales orders" icon={FileBarChart2} tone="bg-blue-50 text-blue-600" />[m
+[32m+[m[32m        <ExecutiveKpiCard label="Completed" value={kpis.completed} detail={`${percentage(kpis.completed)}% completed`} icon={CheckCircle2} tone="bg-emerald-50 text-emerald-600" />[m
+[32m+[m[32m        <ExecutiveKpiCard label="In Production" value={kpis.inProduction} detail={`${percentage(kpis.inProduction)}% in production`} icon={Factory} tone="bg-cyan-50 text-cyan-600" />[m
+[32m+[m[32m        <ExecutiveKpiCard label="Delayed" value={kpis.delayed} detail={`${percentage(kpis.delayed)}% delayed`} icon={AlertTriangle} tone="bg-red-50 text-red-600" />[m
+[32m+[m[32m        <ExecutiveKpiCard label="On Hold" value={kpis.onHold} detail={`${percentage(kpis.onHold)}% on hold`} icon={PauseCircle} tone="bg-amber-50 text-amber-600" />[m
+       </section>[m
+ [m
+[31m-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">[m
+[31m-        <section className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-bold text-slate-900">Production Status</h2><p className="mt-1 text-sm text-slate-500">Selected report data</p><div className="relative mx-auto mt-4 h-52 w-full max-w-[230px]"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={chartData} dataKey="value" innerRadius={58} outerRadius={82} paddingAngle={3} strokeWidth={0}>{chartData.map((entry) => <Cell key={entry.name} fill={STATUS_COLORS[entry.name]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer><div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-bold text-slate-900">{chartTotal ? Math.round((statusCounts.Completed / chartTotal) * 100) : 0}%</span><span className="text-xs text-slate-500">Completed</span><span className="text-[10px] text-slate-400">{chartTotal} updates</span></div></div><div className="mt-3 space-y-2">{chartData.map((entry) => <div key={entry.name} className="flex justify-between text-sm"><span className="flex items-center gap-2 text-slate-600"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[entry.name] }} />{entry.name}</span><span className="font-semibold text-slate-800">{entry.value} <span className="font-normal text-slate-400">({chartTotal ? Math.round((entry.value / chartTotal) * 100) : 0}%)</span></span></div>)}</div></section>[m
+[32m+[m[32m      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">[m
+[32m+[m[32m        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">[m
+[32m+[m[32m          <div className="flex items-start justify-between gap-3">[m
+[32m+[m[32m            <div>[m
+[32m+[m[32m              <h2 className="text-lg font-bold text-slate-900">Production Overview</h2>[m
+[32m+[m[32m              <p className="mt-1 text-sm text-slate-500">Status distribution across filtered sales orders</p>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <FileBarChart2 className="h-5 w-5 text-blue-500" />[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m          <div className="mt-6 space-y-5">[m
+[32m+[m[32m            {[[m
+[32m+[m[32m              { label: 'Completed', value: kpis.completed, color: 'bg-emerald-500' },[m
+[32m+[m[32m              { label: 'In Production', value: kpis.inProduction, color: 'bg-cyan-500' },[m
+[32m+[m[32m              { label: 'Delayed / On Hold', value: kpis.delayed + kpis.onHold, color: 'bg-amber-500' },[m
+[32m+[m[32m            ].map((item) => ([m
+[32m+[m[32m              <div key={item.label}>[m
+[32m+[m[32m                <div className="mb-2 flex items-center justify-between text-sm">[m
+[32m+[m[32m                  <span className="font-semibold text-slate-700">{item.label}</span>[m
+[32m+[m[32m                  <span className="font-bold text-slate-800">{percentage(item.value)}% <span className="font-normal text-slate-400">({item.value})</span></span>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m                <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${item.color}`} style={{ width: `${percentage(item.value)}%` }} /></div>[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            ))}[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m          <p className="mt-6 border-t border-slate-100 pt-4 text-sm text-slate-600">{kpis.completed} of {kpis.total} sales orders are completed.</p>[m
+[32m+[m[32m        </section>[m
+ [m
+[31m-        <section className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-bold text-slate-900">Production Process Summary</h2><p className="mt-1 text-sm text-slate-500">Latest process state across the selected report scope</p><div className="mt-5 overflow-x-auto pb-2"><div className="grid min-w-[720px] grid-cols-6 gap-2">{processSummary.map(({ stage, update }) => { const status = update?.status === 'Done' || update?.status === 'Completed' ? 'Completed' : update?.status === 'In Progress' ? 'Current Process' : update ? 'Pending' : 'Pending'; return <div key={stage} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 p-3 text-center"><div className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full ${status === 'Completed' ? 'bg-emerald-500 text-white' : status === 'Current Process' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-400'}`}>{status === 'Completed' ? <Check className="h-4 w-4" /> : status === 'Current Process' ? <Timer className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-slate-400" />}</div><p className="mt-2 min-h-8 break-words text-xs font-semibold text-slate-700">{stage}</p><p className="mt-1 min-h-8 text-[10px] text-slate-500">{formatDate(update)}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">{status}</p></div>; })}</div></div></section>[m
+[32m+[m[32m        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">[m
+[32m+[m[32m          <div className="flex items-start justify-between gap-3">[m
+[32m+[m[32m            <div>[m
+[32m+[m[32m              <h2 className="text-lg font-bold text-slate-900">Process Performance</h2>[m
+[32m+[m[32m              <p className="mt-1 text-sm text-slate-500">Completion rate and management status by process</p>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <Factory className="h-5 w-5 text-blue-500" />[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m          <div className="mt-5 space-y-3">[m
+[32m+[m[32m            {processPerformance.map(({ stage, percentage, count }) => ([m
+[32m+[m[32m              <div key={stage} className="grid grid-cols-[minmax(0,1fr)_56px_112px] items-center gap-3 text-sm">[m
+[32m+[m[32m                <span className="truncate font-semibold text-slate-700">{stage}</span>[m
+[32m+[m[32m                <span className="text-right text-xs font-bold text-slate-500">{count ? `${percentage}%` : 'N/A'}</span>[m
+[32m+[m[32m                <span className={`rounded-full px-2 py-1 text-center text-[11px] font-semibold ${!count ? 'bg-slate-100 text-slate-500' : percentage >= 80 ? 'bg-emerald-50 text-emerald-700' : percentage >= 50 ? 'bg-cyan-50 text-cyan-700' : 'bg-amber-50 text-amber-700'}`}>[m
+[32m+[m[32m                  {!count ? 'Pending' : percentage >= 80 ? 'On Track' : percentage >= 50 ? 'In Progress' : 'Needs Attention'}[m
+[32m+[m[32m                </span>[m
+[32m+[m[32m                <div className="col-span-3 h-2 overflow-hidden rounded-full bg-slate-100">[m
+[32m+[m[32m                  <div className={`h-full rounded-full ${percentage >= 80 ? 'bg-emerald-500' : percentage >= 50 ? 'bg-cyan-500' : 'bg-amber-500'}`} style={{ width: `${percentage}%` }} />[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            ))}[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m        </section>[m
+       </div>[m
+ [m
+[31m-      <section className="rounded-2xl border border-slate-200/80 bg-white shadow-sm"><div className="border-b border-slate-100 p-5 sm:p-6"><h2 className="text-lg font-bold text-slate-900">Process Performance</h2><p className="mt-1 text-sm text-slate-500">Performance details from the selected report data</p></div><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{['S.O. Number', 'Customer', 'Panel Name', 'Panel Type', 'Current Process', 'Status', 'Last Updated'].map((heading) => <th key={heading} className="px-5 py-3 font-semibold">{heading}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{filteredOrders.map((order) => { const latest = latestUpdate(order.updates); const panel = order.updates.find((item) => item.panelName || item.panelType); return <tr key={order.soNumber}><td className="px-5 py-4 font-semibold text-slate-900">{order.soNumber}</td><td className="px-5 py-4">{panel?.customerName || 'Not available'}</td><td className="px-5 py-4">{panel?.panelName || 'Not available'}</td><td className="px-5 py-4">{panel?.panelType || 'Not available'}</td><td className="px-5 py-4">{currentProcess(order.updates) || 'No production update'}</td><td className="px-5 py-4">{latest?.status || 'Pending'}</td><td className="px-5 py-4 text-slate-500">{formatDate(latest)}</td></tr>; })}{!filteredOrders.length && <tr><td colSpan={7} className="px-5 py-10 text-center text-slate-500">No report data matches the selected filters.</td></tr>}</tbody></table></div></section>[m
+[32m+[m[32m      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">[m
+[32m+[m[32m        <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5 sm:p-6">[m
+[32m+[m[32m          <div>[m
+[32m+[m[32m            <h2 className="text-lg font-bold text-slate-900">Delay &amp; Performance Summary</h2>[m
+[32m+[m[32m            <p className="mt-1 text-sm text-slate-500">Production orders requiring attention</p>[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m          <Search className="h-5 w-5 text-slate-400" />[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m        <div className="overflow-x-auto">[m
+[32m+[m[32m          <table className="w-full min-w-[980px] text-left text-sm">[m
+[32m+[m[32m            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">[m
+[32m+[m[32m              <tr>{['S.O. Number', 'Customer', 'Panel', 'Current Process', 'Production Days', 'Expected Dispatch', 'Status', 'Action'].map((heading) => <th key={heading} className="px-5 py-3 font-semibold">{heading}</th>)}</tr>[m
+[32m+[m[32m            </thead>[m
+[32m+[m[32m            <tbody className="divide-y divide-slate-100">[m
+[32m+[m[32m              {orderRows.map((row) => {[m
+[32m+[m[32m                const times = row.updates.map(updateTime).filter(Boolean);[m
+[32m+[m[32m                const productionDays = times.length > 1[m
+[32m+[m[32m                  ? `${Math.max(1, Math.round((Math.max(...times) - Math.min(...times)) / 86400000))} days`[m
+[32m+[m[32m                  : 'N/A';[m
+[32m+[m[32m                const dispatchUpdate = latestUpdate(row.updates.filter((update) => normalizeProcess(update.process) === 'Dispatch'));[m
+[32m+[m[32m                return ([m
+[32m+[m[32m                  <tr key={row.soNumber} className={`transition hover:bg-slate-50/70 ${row.status === 'Delayed' ? 'bg-red-50/40' : ''}`}>[m
+[32m+[m[32m                    <td className="px-5 py-4 font-bold text-slate-900">{row.soNumber}</td>[m
+[32m+[m[32m                    <td className="px-5 py-4">{row.panel?.customerName || 'Not available'}</td>[m
+[32m+[m[32m                    <td className="px-5 py-4 font-medium text-slate-700">{row.panel?.panelName || row.panel?.panelType || 'Not available'}</td>[m
+[32m+[m[32m                    <td className="px-5 py-4">{row.currentProcess}</td>[m
+[32m+[m[32m                    <td className="px-5 py-4 text-slate-500">{productionDays}</td>[m
+[32m+[m[32m                    <td className="px-5 py-4 text-slate-500">{dispatchUpdate ? formatDateTime(dispatchUpdate) : 'Not scheduled'}</td>[m
+[32m+[m[32m                    <td className="px-5 py-4"><StatusBadge status={row.status} /></td>[m
+[32m+[m[32m                    <td className="px-5 py-4"><button type="button" className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50">View</button></td>[m
+[32m+[m[32m                  </tr>[m
+[32m+[m[32m                );[m
+[32m+[m[32m              })}[m
+[32m+[m[32m              {!orderRows.length && <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-500">No report data available for the selected filters.</td></tr>}[m
+[32m+[m[32m            </tbody>[m
+[32m+[m[32m          </table>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </section>[m
+[32m+[m
+[32m+[m[32m      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">[m
+[32m+[m[32m        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">[m
+[32m+[m[32m          <div className="flex items-center gap-2 text-sm font-semibold text-slate-500"><Timer className="h-4 w-4 text-blue-500" /> Average Production Time</div>[m
+[32m+[m[32m          <p className="mt-3 text-2xl font-bold text-slate-900">{insights.average}</p>[m
+[32m+[m[32m          <p className="mt-1 text-xs text-slate-400">Based on available update timestamps</p>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">[m
+[32m+[m[32m          <div className="flex items-center gap-2 text-sm font-semibold text-slate-500"><CalendarDays className="h-4 w-4 text-emerald-500" /> On-Time Dispatch</div>[m
+[32m+[m[32m          <p className="mt-3 text-2xl font-bold text-slate-900">{insights.onTimeDispatch}%</p>[m
+[32m+[m[32m          <p className="mt-1 text-xs text-slate-400">{insights.dispatchSubtitle}</p>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">[m
+[32m+[m[32m          <div className="flex items-center gap-2 text-sm font-semibold text-slate-500"><AlertTriangle className="h-4 w-4 text-amber-500" /> Most Delayed Process</div>[m
+[32m+[m[32m          <p className="mt-3 truncate text-2xl font-bold text-slate-900">{insights.mostDelayed?.[0] || 'No delays'}</p>[m
+[32m+[m[32m          <p className="mt-1 text-xs text-slate-400">{insights.mostDelayed ? `${insights.mostDelayed[1].count} delayed updates in this view` : 'All tracked processes are on schedule'}</p>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </section>[m
+     </div>[m
+   );[m
+ }[m

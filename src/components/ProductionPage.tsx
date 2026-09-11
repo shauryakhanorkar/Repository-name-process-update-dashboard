@@ -119,14 +119,14 @@ function StatCard({
   tone: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+    <div className="min-h-[128px] rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-slate-500">{label}</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
         </div>
-        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}>
-          <Icon className="h-5 w-5" />
+        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${tone}`}>
+          <Icon className="h-4 w-4" />
         </div>
       </div>
     </div>
@@ -317,7 +317,7 @@ export default function ProductionPage({ data }: ProductionPageProps) {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total S.O." value={kpis.total} icon={FileText} tone="bg-blue-50 text-blue-600" />
         <StatCard label="In Production" value={kpis.inProduction} icon={Factory} tone="bg-cyan-50 text-cyan-600" />
         <StatCard label="Completed" value={kpis.completed} icon={PackageCheck} tone="bg-emerald-50 text-emerald-600" />

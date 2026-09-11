@@ -251,21 +251,21 @@ export default function NotesPage({ data }: NotesPageProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: 'Total Notes', value: summary.total, icon: FileText, tone: 'text-blue-600 bg-blue-50' },
           { label: 'Unread / New', value: summary.newNotes, icon: Clock3, tone: 'text-violet-600 bg-violet-50' },
           { label: 'Critical Notes', value: summary.critical, icon: AlertTriangle, tone: 'text-red-600 bg-red-50' },
           { label: 'This Week', value: summary.thisWeek, icon: CalendarDays, tone: 'text-emerald-600 bg-emerald-50' },
         ].map(({ label, value, icon: Icon, tone }) => (
-          <div key={label} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between">
+          <div key={label} className="min-h-[120px] rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-slate-500">{label}</p>
-                <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
+                <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
               </div>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
-                <Icon className="h-5 w-5" />
+              <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${tone}`}>
+                <Icon className="h-4 w-4" />
               </div>
             </div>
           </div>
