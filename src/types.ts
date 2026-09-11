@@ -27,6 +27,10 @@ export interface ProjectUpdate {
     | string;
 
   date: string;
+
+  note_remarks: string | null;
+
+  employeeName?: string | null;
 }
 
 

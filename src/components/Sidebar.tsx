@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { X, LayoutDashboard, Factory, StickyNote, Truck, Package } from 'lucide-react';
+import { X, LayoutDashboard, Factory, StickyNote, Truck, Package, FileBarChart2 } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'dashboard' | 'production' | 'notes' | 'dispatch' | 'bom' | 'inventory';
-  onTabChange: (tab: 'dashboard' | 'production' | 'notes' | 'dispatch' | 'bom' | 'inventory') => void;
+  activeTab: 'dashboard' | 'production' | 'notes' | 'dispatch' | 'reports' | 'bom' | 'inventory';
+  onTabChange: (tab: 'dashboard' | 'production' | 'notes' | 'dispatch' | 'reports' | 'bom' | 'inventory') => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -19,6 +19,7 @@ export default function Sidebar({
     { id: 'production' as const, label: 'Production', icon: Factory },
     { id: 'notes' as const, label: 'Notes', icon: StickyNote },
     { id: 'dispatch' as const, label: 'Dispatch', icon: Truck },
+    { id: 'reports' as const, label: 'Reports', icon: FileBarChart2 },
   ];
 
   // Allow the Escape key to close the drawer.

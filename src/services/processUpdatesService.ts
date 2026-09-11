@@ -40,6 +40,8 @@ interface ProcessUpdateRow {
   details: unknown;
 
   form_name: string | null;
+
+  note_remarks: string | null;
 }
 
 
@@ -96,7 +98,11 @@ function mapSupabaseRowToProjectUpdate(
 
     status: row.status ?? '',
 
-    date: row.date ?? ''
+    date: row.date ?? '',
+
+    note_remarks: row.note_remarks,
+
+    employeeName: row.employee_name
   };
 }
 
@@ -126,7 +132,8 @@ export async function fetchProcessUpdates(): Promise<ProjectUpdate[]> {
       panel_name,
       current_stage,
       details,
-      form_name
+      form_name,
+      note_remarks
     `)
     .order('process_order', {
       ascending: true
@@ -196,7 +203,9 @@ export async function fetchProcessUpdates(): Promise<ProjectUpdate[]> {
 
     details: row.details,
 
-    form_name: row.form_name
+    form_name: row.form_name,
+
+    note_remarks: row.note_remarks
   }));
 
 

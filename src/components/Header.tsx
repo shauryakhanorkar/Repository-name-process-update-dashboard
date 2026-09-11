@@ -77,7 +77,7 @@ export default function Header({
       </div>
 
       {/* Filter Row */}
-      <div className="relative mt-6 grid grid-cols-1 gap-3 border-t border-white/10 pt-5 sm:grid-cols-2 sm:gap-4 lg:mt-7 lg:pt-6 xl:grid-cols-4">
+      <div className="relative mt-6 grid grid-cols-1 gap-3 border-t border-white/10 pt-5 sm:grid-cols-2 sm:gap-4 lg:mt-7 lg:pt-6">
         {/* S.O. Number Filter */}
         <div className="relative min-w-0">
           <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-300">

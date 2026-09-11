@@ -8,12 +8,14 @@ import { Menu } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import InventoryPage from './components/InventoryPage';
 import BOMPage from './components/BOMPage';
+import ProductionPage from './components/ProductionPage';
+import ReportsPage from './components/ReportsPage';
 import Header from './components/Header';
-import KPICards from './components/KPICards';
 import ProcessChart from './components/ProcessChart';
 import StatusPieChart from './components/StatusPieChart';
 import PanelPieChart from './components/PanelPieChart';
 import OtherPanelPieChart from './components/OtherPanelPieChart';
+import NotesPage from './components/NotesPage';
 import ProcessPivotTable from './components/ProcessPivotTable';
 import PanelPivotTable from './components/PanelPivotTable';
 
@@ -26,12 +28,13 @@ import {
 import {
   fetchProcessUpdates,
 } from './services/processUpdatesService';
+import { PROCESS_OPTIONS } from './constants/processes';
 
 
 export default function App() {
 
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'production' | 'notes' | 'dispatch' | 'bom' | 'inventory'
+    'dashboard' | 'production' | 'notes' | 'dispatch' | 'reports' | 'bom' | 'inventory'
   >('dashboard');
 
   // Navigation is a drawer so the dashboard never loses horizontal space.
@@ -212,16 +215,6 @@ export default function App() {
   /* =========================================================
      PROCESS OPTIONS
      ========================================================= */
-
-  const PROCESS_OPTIONS = [
-    'Quotation',
-    'Fabrication',
-    'Powder Coating',
-    'Assembly and Wiring',
-    'Testing',
-    'Dispatch',
-  ];
-
 
   /* =========================================================
      FILTER OPTIONS
@@ -535,10 +528,11 @@ export default function App() {
               HEADER
               ================================================= */}
 
-          <Header
-            soNumbers={
-              filterOptions.soNumbers
-            }
+          {activeTab === 'dashboard' && (
+            <Header
+              soNumbers={
+                filterOptions.soNumbers
+              }
 
             panels={
               filterOptions.panels
@@ -584,10 +578,11 @@ export default function App() {
               setSelectedStatus
             }
 
-            onRefresh={
-              handleRefresh
-            }
-          />
+              onRefresh={
+                handleRefresh
+              }
+            />
+          )}
 
 
           {/* =================================================
@@ -641,33 +636,7 @@ export default function App() {
 
             <>
 
-              {/* =============================================
-                  PROCESS CHART + KPI CARDS
-                  ============================================= */}
-
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-
-                <div className="lg:col-span-8">
-
-                  <ProcessChart
-                    data={
-                      processChartData
-                    }
-                  />
-
-                </div>
-
-
-                <div className="lg:col-span-4 h-full">
-
-                  <KPICards
-  totalPanels={totalPanels}
-  data={filteredUpdates}
-/>
-
-                </div>
-
-              </div>
+              <ProcessChart data={processChartData} />
 
 
               {/* =============================================
@@ -725,6 +694,17 @@ export default function App() {
 
 
           {/* =================================================
+              PRODUCTION
+              ================================================= */}
+
+          {!loading &&
+            !errorMessage &&
+            activeTab === 'production' && (
+              <ProductionPage data={projectUpdates} />
+            )}
+
+
+          {/* =================================================
               BOM
               ================================================= */}
 
@@ -739,6 +719,14 @@ export default function App() {
 
           {activeTab === 'inventory' && (
             <InventoryPage />
+          )}
+
+          {activeTab === 'reports' && (
+            <ReportsPage data={projectUpdates} />
+          )}
+
+          {activeTab === 'notes' && (
+            <NotesPage data={projectUpdates} />
           )}
 
 
