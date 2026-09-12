@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, LayoutDashboard, Factory, StickyNote, Truck, Package, FileBarChart2 } from 'lucide-react';
+import { X, LayoutDashboard, Factory, StickyNote, Package, FileBarChart2 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: 'dashboard' | 'production' | 'notes' | 'dispatch' | 'reports' | 'bom' | 'inventory';
@@ -18,7 +18,6 @@ export default function Sidebar({
     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'production' as const, label: 'Production', icon: Factory },
     { id: 'notes' as const, label: 'Notes', icon: StickyNote },
-    { id: 'dispatch' as const, label: 'Dispatch', icon: Truck },
     { id: 'reports' as const, label: 'Reports', icon: FileBarChart2 },
   ];
 

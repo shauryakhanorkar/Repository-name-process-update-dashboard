@@ -358,7 +358,6 @@ export default function ProductionPage({ data }: ProductionPageProps) {
                 <div><p className="text-xs font-medium uppercase tracking-wide text-slate-400">Customer</p><p className="mt-1 font-semibold text-slate-800">{selectedPanel?.customerName || 'Not available'}</p></div>
                 <div><p className="text-xs font-medium uppercase tracking-wide text-slate-400">Order Date</p><p className="mt-1 font-semibold text-slate-800">{formatDateTime(selectedOrderDate)}</p></div>
                 <div><p className="text-xs font-medium uppercase tracking-wide text-slate-400">Panel Type</p><p className="mt-1 font-semibold text-slate-800">{selectedPanel?.panelType || 'Not available'}</p></div>
-                <div><p className="text-xs font-medium uppercase tracking-wide text-slate-400">Qty</p><p className="mt-1 font-semibold text-slate-800">Not available</p></div>
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
