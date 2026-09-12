@@ -3,7 +3,13 @@ import React, {
   useEffect,
   useMemo,
 } from 'react';
-import { Menu } from 'lucide-react';
+import {
+  BriefcaseBusiness,
+  CheckCircle2,
+  Clock3,
+  LoaderCircle,
+  Menu,
+} from 'lucide-react';
 
 import Sidebar from './components/Sidebar';
 import InventoryPage from './components/InventoryPage';
@@ -190,29 +196,6 @@ export default function App() {
 
 
   /* =========================================================
-     ALL 14 PANEL TYPES
-     ========================================================= */
-
-  const ALL_PANELS = [
-    'Meter Panel',
-    'PDB Panel',
-    'MCC Panel',
-    'APFC Panel',
-    'PCC Panel',
-    'PLC Panel',
-    'Fidder Piller',
-
-    'Street Light Panel',
-    'High Mast Panel',
-    'Enclosure Box',
-    'UPS Panel',
-    'Main LT Panel',
-    'ACB Panel',
-    'ATS Box',
-  ];
-
-
-  /* =========================================================
      PROCESS OPTIONS
      ========================================================= */
 
@@ -237,7 +220,19 @@ export default function App() {
     ).sort();
 
 
-    const panels = ALL_PANELS;
+    const panels = Array.from(
+      new Set(
+        projectUpdates.flatMap((update) => [
+          update.panelName,
+          update.panelType,
+          update.otherPanelTypes,
+        ])
+      )
+    ).filter(
+      (panel): panel is string =>
+        Boolean(panel?.trim()) &&
+        panel.trim().toUpperCase() !== 'N/A'
+    );
 
 
     const statuses = [
@@ -392,15 +387,17 @@ export default function App() {
   const panelPieData =
     useMemo<PieChartDataPoint[]>(() => {
 
-      const mainPanels = [
-        'Meter Panel',
-        'PDB Panel',
-        'MCC Panel',
-        'APFC Panel',
-        'PCC Panel',
-        'PLC Panel',
-        'Fidder Piller',
-      ];
+      const mainPanels = Array.from(
+        new Set(
+          filteredUpdates.map(
+            (update) => update.panelType
+          )
+        )
+      ).filter(
+        (panel): panel is string =>
+          Boolean(panel?.trim()) &&
+          panel.trim().toUpperCase() !== 'N/A'
+      );
 
 
       return mainPanels.map(
@@ -410,7 +407,6 @@ export default function App() {
           value:
             filteredUpdates.filter(
               (u) =>
-                u.panelName === panel ||
                 u.panelType === panel
             ).length,
         })
@@ -426,15 +422,17 @@ export default function App() {
   const otherPanelPieData =
     useMemo<PieChartDataPoint[]>(() => {
 
-      const otherPanels = [
-        'Street Light Panel',
-        'High Mast Panel',
-        'Enclosure Box',
-        'UPS Panel',
-        'Main LT Panel',
-        'ACB Panel',
-        'ATS Box',
-      ];
+      const otherPanels = Array.from(
+        new Set(
+          filteredUpdates.map(
+            (update) => update.otherPanelTypes
+          )
+        )
+      ).filter(
+        (panel): panel is string =>
+          Boolean(panel?.trim()) &&
+          panel.trim().toUpperCase() !== 'N/A'
+      );
 
 
       return otherPanels.map(
@@ -481,6 +479,19 @@ export default function App() {
     return uniqueSONumbers.size;
 
   }, [filteredUpdates]);
+
+  const dashboardKpis = useMemo(() => ({
+    totalProjects: totalPanels,
+    inProgress: filteredUpdates.filter(
+      (update) => update.status === 'In Progress'
+    ).length,
+    pending: filteredUpdates.filter(
+      (update) => update.status === 'Pending'
+    ).length,
+    completed: filteredUpdates.filter(
+      (update) => update.status === 'Done'
+    ).length,
+  }), [filteredUpdates, totalPanels]);
 
 
 
@@ -635,6 +646,68 @@ export default function App() {
             activeTab === 'dashboard' && (
 
             <>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm shadow-blue-100/60">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                      Total Projects
+                    </p>
+                    <div className="rounded-xl bg-blue-100 p-2 text-blue-600">
+                      <BriefcaseBusiness className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold leading-none text-slate-800">
+                    {dashboardKpis.totalProjects}
+                  </p>
+                  <div className="h-1 w-12 rounded-full bg-blue-500/70" />
+                </div>
+
+                <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 to-white p-4 shadow-sm shadow-orange-100/60">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">
+                      In Progress
+                    </p>
+                    <div className="rounded-xl bg-orange-100 p-2 text-orange-600">
+                      <LoaderCircle className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold leading-none text-slate-800">
+                    {dashboardKpis.inProgress}
+                  </p>
+                  <div className="h-1 w-12 rounded-full bg-orange-500/70" />
+                </div>
+
+                <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50 to-white p-4 shadow-sm shadow-purple-100/60">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">
+                      Pending
+                    </p>
+                    <div className="rounded-xl bg-purple-100 p-2 text-purple-600">
+                      <Clock3 className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold leading-none text-slate-800">
+                    {dashboardKpis.pending}
+                  </p>
+                  <div className="h-1 w-12 rounded-full bg-purple-500/70" />
+                </div>
+
+                <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm shadow-emerald-100/60">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      Completed
+                    </p>
+                    <div className="rounded-xl bg-emerald-100 p-2 text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold leading-none text-slate-800">
+                    {dashboardKpis.completed}
+                  </p>
+                  <div className="h-1 w-12 rounded-full bg-emerald-500/70" />
+                </div>
+              </div>
 
               <ProcessChart data={processChartData} />
 

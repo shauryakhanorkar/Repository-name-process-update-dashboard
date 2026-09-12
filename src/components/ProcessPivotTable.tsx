@@ -26,14 +26,8 @@ const PROCESS_SHORT_NAMES: Record<string, string> = {
 export default function ProcessPivotTable({
   data,
 }: ProcessPivotTableProps) {
-
-  /* =========================================================
-     PROCESS SUMMARY
-     ========================================================= */
-
-  const processSummary = useMemo(() => {
+  const processCompletion = useMemo(() => {
     return PROCESSES.map((process) => {
-
       const processItems = data.filter(
         (item) => item.process === process
       );
@@ -59,17 +53,20 @@ export default function ProcessPivotTable({
 
       return {
         process,
-        displayName:
-          PROCESS_SHORT_NAMES[process],
-        done,
-        inProgress,
-        pending,
-        total,
+        displayName: PROCESS_SHORT_NAMES[process],
         completion,
       };
     });
 
   }, [data]);
+
+  const lowestCompletion = processCompletion.reduce(
+    (lowest, item) =>
+      !lowest || item.completion < lowest.completion
+        ? item
+        : lowest,
+    undefined as (typeof processCompletion)[number] | undefined
+  );
 
 
   /* =========================================================
@@ -77,114 +74,56 @@ export default function ProcessPivotTable({
      ========================================================= */
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-
-      {/* =====================================================
-          HEADER
-          ===================================================== */}
-
-      <div className="mb-6 flex items-center gap-3">
-
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="mb-5 flex items-center gap-3">
         <div className="h-7 w-1 rounded-full bg-indigo-600" />
-
-        <h2 className="text-lg font-bold text-slate-900">
-          Process Summary
-        </h2>
-
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">
+            Process Completion
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-400">
+            Completion rate across production stages
+          </p>
+        </div>
       </div>
 
+      <div className="space-y-3">
+        {processCompletion.map((item) => {
+          const isLowest = item.process === lowestCompletion?.process;
 
-      {/* =====================================================
-          TABLE
-          ===================================================== */}
-
-      <div className="overflow-x-auto">
-
-        <table className="w-full min-w-[720px] border-collapse">
-
-          <thead>
-
-            <tr className="bg-[#0c1b3d] text-white">
-
-              <th className="rounded-tl-lg px-4 py-4 text-left text-sm font-semibold">
-                Process
-              </th>
-
-              <th className="px-4 py-4 text-center text-sm font-semibold">
-                Done
-              </th>
-
-              <th className="px-4 py-4 text-center text-sm font-semibold">
-                In Progress
-              </th>
-
-              <th className="px-4 py-4 text-center text-sm font-semibold">
-                Pending
-              </th>
-
-              <th className="px-4 py-4 text-center text-sm font-semibold">
-                Total
-              </th>
-
-              <th className="rounded-tr-lg px-4 py-4 text-center text-sm font-semibold">
-                Completion
-              </th>
-
-            </tr>
-
-          </thead>
-
-
-          <tbody>
-
-            {processSummary.map((item) => (
-
-              <tr
-                key={item.process}
-                className="border-b border-slate-100 last:border-b-0"
-              >
-
-                <td className="px-4 py-4 text-sm font-semibold text-slate-800">
+          return (
+            <div
+              key={item.process}
+              className={`rounded-xl px-3 py-2 transition-colors ${
+                isLowest
+                  ? 'bg-amber-50/70 ring-1 ring-amber-100'
+                  : 'hover:bg-slate-50'
+              }`}
+            >
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <span className="min-w-0 truncate text-sm font-semibold text-slate-700">
                   {item.displayName}
-                </td>
-
-
-                <td className="px-4 py-4 text-center text-sm text-slate-700">
-                  {item.done}
-                </td>
-
-
-                <td className="px-4 py-4 text-center text-sm text-slate-700">
-                  {item.inProgress}
-                </td>
-
-
-                <td className="px-4 py-4 text-center text-sm text-slate-700">
-                  {item.pending}
-                </td>
-
-
-                <td className="px-4 py-4 text-center text-sm font-semibold text-slate-800">
-                  {item.total}
-                </td>
-
-
-                <td className="px-4 py-4 text-center">
-                  <span className="text-sm font-semibold text-slate-700">
-                    {item.completion.toFixed(1)}%
-                  </span>
-                </td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
-
+                </span>
+                <span className={`shrink-0 text-sm font-bold ${
+                  isLowest ? 'text-amber-700' : 'text-emerald-600'
+                }`}>
+                  {item.completion.toFixed(1)}%
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`h-full rounded-full ${
+                    isLowest
+                      ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                      : 'bg-gradient-to-r from-blue-500 to-emerald-500'
+                  }`}
+                  style={{ width: `${item.completion}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
-
-    </div>  
+    </div>
   );
 }

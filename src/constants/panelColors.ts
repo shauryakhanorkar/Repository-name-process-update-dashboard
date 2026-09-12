@@ -1,0 +1,16 @@
+export const PANEL_COLORS: Record<string, string> = {
+  'Meter Panel': '#06b6d4',
+  'PDB Panel': '#eab308',
+  'MCC Panel': '#ec4899',
+  'APFC Panel': '#f97316',
+  'PCC Panel': '#14b8a6',
+  'Enclosure Box': '#8b5cf6',
+  'ACB Panel': '#3b82f6',
+  'ATS Box': '#f43f5e',
+  'Street Light Panel': '#0f766e',
+  'High Mast Panel': '#c2410c',
+  'UPS Panel': '#0891b2',
+  'Main LT Panel': '#1d4ed8',
+  'PLC Panel': '#a16207',
+  'Fidder Piller': '#be123c',
+};

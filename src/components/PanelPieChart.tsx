@@ -7,20 +7,11 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { PieChartDataPoint } from '../types';
+import { PANEL_COLORS } from '../constants/panelColors';
 
 interface PanelPieChartProps {
   data: PieChartDataPoint[];
 }
-
-const PANEL_COLORS: Record<string, string> = {
-  'Meter Panel': '#06b6d4',
-  'APFC Panel': '#f97316',
-  'MCC Panel': '#ec4899',
-  'PCC Panel': '#14b8a6',
-  'PLC Panel': '#3b82f6',
-  'PDB Panel': '#eab308',
-  'Fidder Piller': '#f43f5e',
-};
 
 export default function PanelPieChart({
   data,
@@ -80,7 +71,7 @@ export default function PanelPieChart({
                     key={`cell-${index}`}
                     fill={
                       PANEL_COLORS[entry.name] ||
-                      '#94a3b8'
+                      '#111827'
                     }
                   />
                 ))}
@@ -137,7 +128,7 @@ export default function PanelPieChart({
                     style={{
                       backgroundColor:
                         PANEL_COLORS[item.name] ||
-                        '#94a3b8',
+                        '#111827',
                     }}
                   />
 

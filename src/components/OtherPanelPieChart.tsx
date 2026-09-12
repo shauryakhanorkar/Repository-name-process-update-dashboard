@@ -7,20 +7,11 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { PieChartDataPoint } from '../types';
+import { PANEL_COLORS } from '../constants/panelColors';
 
 interface OtherPanelPieChartProps {
   data: PieChartDataPoint[];
 }
-
-const OTHER_PANEL_COLORS: Record<string, string> = {
-  'Street Light Panel': '#06b6d4',
-  'High Mast Panel': '#f97316',
-  'Enclosure Box': '#ec4899',
-  'UPS Panel': '#14b8a6',
-  'Main LT Panel': '#3b82f6',
-  'ACB Panel': '#eab308',
-  'ATS Box': '#f43f5e',
-};
 
 export default function OtherPanelPieChart({
   data,
@@ -79,8 +70,8 @@ export default function OtherPanelPieChart({
                   <Cell
                     key={`cell-${index}`}
                     fill={
-                      OTHER_PANEL_COLORS[entry.name] ||
-                      '#94a3b8'
+                      PANEL_COLORS[entry.name] ||
+                      '#111827'
                     }
                   />
                 ))}
@@ -136,9 +127,9 @@ export default function OtherPanelPieChart({
                     className="h-2.5 w-2.5 rounded-full shrink-0"
                     style={{
                       backgroundColor:
-                        OTHER_PANEL_COLORS[
+                        PANEL_COLORS[
                           item.name
-                        ] || '#94a3b8',
+                        ] || '#111827',
                     }}
                   />
 
