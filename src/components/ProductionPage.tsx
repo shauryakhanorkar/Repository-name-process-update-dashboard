@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import {
   Check,
+  CheckCircle2,
   CalendarDays,
   ChevronDown,
   Clock3,
   Factory,
   FileText,
+  Info,
   PackageCheck,
   ShieldAlert,
   Timer,
@@ -429,18 +431,24 @@ export default function ProductionPage({ data }: ProductionPageProps) {
             </div>
 
             <div className="mt-6 grid gap-6 border-t border-slate-100 pt-6 md:grid-cols-2">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-800">Completed Processes</h3>
-                <div className="mt-3 space-y-2">
-                  {selectedStages.filter(({ stage, update }, index) => getProcessCardStatus(stage, index, selectedOrder.currentProcess, update) === 'Completed').map(({ stage, update }) => <div key={stage} className="flex items-center justify-between gap-3 text-sm"><span className="flex min-w-0 items-center gap-2 text-slate-600"><Check className="h-4 w-4 shrink-0 text-emerald-500" />{stage}</span><span className="shrink-0 text-xs text-slate-400">{formatDateTime(update)}</span></div>)}
-                  {!selectedStages.some(({ stage, update }, index) => getProcessCardStatus(stage, index, selectedOrder.currentProcess, update) === 'Completed') && <p className="text-sm text-slate-400">No completed process updates.</p>}
+              <div className="rounded-2xl border border-emerald-100 border-t-4 border-t-emerald-500 bg-emerald-50/60 p-4 shadow-sm sm:p-5">
+                <div className="flex items-center gap-2 text-emerald-800">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <h3 className="text-sm font-semibold">Completed Processes</h3>
+                </div>
+                <div className="mt-3 divide-y divide-emerald-100/80">
+                  {selectedStages.filter(({ stage, update }, index) => getProcessCardStatus(stage, index, selectedOrder.currentProcess, update) === 'Completed').map(({ stage, update }) => <div key={stage} className="flex items-center justify-between gap-3 py-2 text-sm"><span className="flex min-w-0 items-center gap-2 font-medium text-slate-700"><Check className="h-4 w-4 shrink-0 text-emerald-600" /><span className="truncate">{stage}</span></span><span className="shrink-0 text-xs text-slate-500">{formatDateTime(update)}</span></div>)}
+                  {!selectedStages.some(({ stage, update }, index) => getProcessCardStatus(stage, index, selectedOrder.currentProcess, update) === 'Completed') && <div className="py-4 text-center text-sm text-slate-500">No completed process updates.</div>}
                 </div>
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-slate-800">Upcoming Processes</h3>
-                <div className="mt-3 space-y-2">
-                  {selectedStages.filter(({ stage, update }, index) => getProcessCardStatus(stage, index, selectedOrder.currentProcess, update) === 'Upcoming').map(({ stage }) => <div key={stage} className="flex items-start gap-2 text-sm text-slate-600"><Timer className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" /><span>{stage}<span className="mt-0.5 block text-xs text-slate-400">{expectedDateLabel()}</span></span></div>)}
-                  {!selectedStages.some(({ stage, update }, index) => getProcessCardStatus(stage, index, selectedOrder.currentProcess, update) === 'Upcoming') && <p className="text-sm text-slate-400">No upcoming process updates.</p>}
+              <div className="rounded-2xl border border-blue-100 border-t-4 border-t-blue-500 bg-blue-50/60 p-4 shadow-sm sm:p-5">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <Info className="h-5 w-5" />
+                  <h3 className="text-sm font-semibold">Upcoming Processes</h3>
+                </div>
+                <div className="mt-3 divide-y divide-blue-100/80">
+                  {selectedStages.filter(({ stage, update }, index) => getProcessCardStatus(stage, index, selectedOrder.currentProcess, update) === 'Upcoming').map(({ stage }) => <div key={stage} className="flex items-center justify-between gap-3 py-2 text-sm"><span className="flex min-w-0 items-center gap-2 font-medium text-slate-700"><Timer className="h-4 w-4 shrink-0 text-blue-600" /><span className="truncate">{stage}</span></span><span className="shrink-0 text-xs text-slate-500">{expectedDateLabel()}</span></div>)}
+                  {!selectedStages.some(({ stage, update }, index) => getProcessCardStatus(stage, index, selectedOrder.currentProcess, update) === 'Upcoming') && <div className="flex min-h-20 items-center justify-center gap-2 py-4 text-center text-sm text-slate-500"><Info className="h-4 w-4 text-blue-600" /><span>No upcoming process updates</span></div>}
                 </div>
               </div>
             </div>
