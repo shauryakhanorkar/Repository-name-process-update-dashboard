@@ -9,6 +9,7 @@ import {
   PauseCircle,
   Search,
   Timer,
+  X,
 } from 'lucide-react';
 import { PROCESS_OPTIONS } from '../constants/processes';
 import { ProjectUpdate } from '../types';
@@ -69,6 +70,13 @@ function formatDateTime(update: ProjectUpdate | null): string {
   });
 }
 
+function productionDays(updates: ProjectUpdate[]): string {
+  const times = updates.map(updateTime).filter(Boolean);
+  return times.length > 1
+    ? `${Math.max(1, Math.round((Math.max(...times) - Math.min(...times)) / 86400000))} days`
+    : 'N/A';
+}
+
 function reportStatus(updates: ProjectUpdate[]): ReportStatus {
   const status = latestUpdate(updates)?.status?.toLowerCase() || '';
   if (status === 'done' || status === 'completed') return 'Completed';
@@ -123,6 +131,7 @@ export default function ReportsPage({ data }: ReportsPageProps) {
   const [selectedPanel, setSelectedPanel] = useState('All');
   const [selectedProcess, setSelectedProcess] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedOrder, setSelectedOrder] = useState<ReportOrder | null>(null);
 
   const orders = useMemo(() => {
     const grouped = new Map<string, ProjectUpdate[]>();
@@ -370,10 +379,6 @@ export default function ReportsPage({ data }: ReportsPageProps) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {orderRows.map((row) => {
-                const times = row.updates.map(updateTime).filter(Boolean);
-                const productionDays = times.length > 1
-                  ? `${Math.max(1, Math.round((Math.max(...times) - Math.min(...times)) / 86400000))} days`
-                  : 'N/A';
                 const dispatchUpdate = latestUpdate(row.updates.filter((update) => normalizeProcess(update.process) === 'Dispatch'));
                 return (
                   <tr key={row.soNumber} className={`transition hover:bg-slate-50/70 ${row.status === 'Delayed' ? 'bg-red-50/40' : ''}`}>
@@ -381,10 +386,10 @@ export default function ReportsPage({ data }: ReportsPageProps) {
                     <td className="px-5 py-4">{row.panel?.customerName || 'Not available'}</td>
                     <td className="px-5 py-4 font-medium text-slate-700">{row.panel?.panelName || row.panel?.panelType || 'Not available'}</td>
                     <td className="px-5 py-4">{row.currentProcess}</td>
-                    <td className="px-5 py-4 text-slate-500">{productionDays}</td>
-                    <td className="px-5 py-4 text-slate-500">{dispatchUpdate ? formatDateTime(dispatchUpdate) : 'Not scheduled'}</td>
+                    <td className="px-5 py-4 text-slate-500">{productionDays(row.updates)}</td>
+                    <td className="px-5 py-4 text-slate-500">{dispatchUpdate ? formatDateTime(dispatchUpdate) : 'N/A'}</td>
                     <td className="px-5 py-4"><StatusBadge status={row.status} /></td>
-                    <td className="px-5 py-4"><button type="button" className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50">View</button></td>
+                    <td className="px-5 py-4"><button type="button" onClick={() => setSelectedOrder(row)} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50">View</button></td>
                   </tr>
                 );
               })}
@@ -411,6 +416,69 @@ export default function ReportsPage({ data }: ReportsPageProps) {
           <p className="mt-1 text-xs text-slate-400">{insights.mostDelayed ? `${insights.mostDelayed[1].count} delayed updates in this view` : 'All tracked processes are on schedule'}</p>
         </div>
       </section>
+
+      {selectedOrder && (() => {
+        const selectedPanel = selectedOrder.panel;
+        const processHistory = PROCESS_OPTIONS.map((stage) => ({
+          stage,
+          update: latestUpdate(selectedOrder.updates.filter((update) => normalizeProcess(update.process) === stage)),
+        }));
+        const selectedDispatch = processHistory.find(({ stage }) => stage === 'Dispatch')?.update || null;
+        const note = latestUpdate(selectedOrder.updates.filter((update) => update.note_remarks?.trim()))?.note_remarks;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedOrder(null); }}>
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="report-detail-title">
+              <div className="flex items-start justify-between border-b border-slate-100 p-5 sm:p-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">S.O. Detail</p>
+                  <h2 id="report-detail-title" className="mt-1 text-2xl font-bold text-slate-900">{selectedOrder.soNumber}</h2>
+                </div>
+                <button type="button" onClick={() => setSelectedOrder(null)} aria-label="Close S.O. details" title="Close" className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"><X className="h-5 w-5" /></button>
+              </div>
+
+              <div className="space-y-6 p-5 sm:p-6">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    ['Customer Name', selectedPanel?.customerName],
+                    ['Panel Type', selectedPanel?.panelType || selectedPanel?.panelName || selectedPanel?.otherPanelTypes],
+                    ['Current Process', selectedOrder.currentProcess],
+                    ['Production Days', productionDays(selectedOrder.updates)],
+                    ['Expected Dispatch', selectedDispatch ? formatDateTime(selectedDispatch) : null],
+                    ['Current Status', selectedOrder.status],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                      <p className="mt-1 font-semibold text-slate-800">{value || 'N/A'}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Process History</h3>
+                  <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+                    <div className="grid grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)] bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <span>Process</span><span>Status</span><span>Latest Update</span>
+                    </div>
+                    {processHistory.map(({ stage, update }) => (
+                      <div key={stage} className="grid grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)] items-center gap-2 border-t border-slate-100 px-4 py-3 text-sm">
+                        <span className="font-medium text-slate-700">{stage === 'Assembly and Wiring' ? 'Assembly & Wiring' : stage}</span>
+                        <span className="font-semibold text-slate-800">{update?.status || 'N/A'}</span>
+                        <span className="text-slate-500">{formatDateTime(update)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Note / Remarks</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{note || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
