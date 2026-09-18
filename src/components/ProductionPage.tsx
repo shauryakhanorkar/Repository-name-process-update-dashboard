@@ -17,6 +17,7 @@ import { ProjectUpdate } from '../types';
 
 interface ProductionPageProps {
   data: ProjectUpdate[];
+  selectedSONumber?: string;
 }
 
 const PRODUCTION_STAGES = [
@@ -213,9 +214,13 @@ function ProductionStatusChart({
   );
 }
 
-export default function ProductionPage({ data }: ProductionPageProps) {
-  const [selectedSONumber, setSelectedSONumber] = useState('');
+export default function ProductionPage({ data, selectedSONumber: requestedSONumber }: ProductionPageProps) {
+  const [selectedSONumber, setSelectedSONumber] = useState(requestedSONumber || '');
   const [tableSONumber, setTableSONumber] = useState('All');
+
+  React.useEffect(() => {
+    if (requestedSONumber) setSelectedSONumber(requestedSONumber);
+  }, [requestedSONumber]);
 
   const orders = useMemo<ProductionOrder[]>(() => {
     const bySO = new Map<string, ProjectUpdate[]>();

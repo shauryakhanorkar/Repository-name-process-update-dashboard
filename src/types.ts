@@ -1,4 +1,6 @@
 export interface ProjectUpdate {
+  processOrder?: number;
+
   timestamp: string;
 
   customerName: string;

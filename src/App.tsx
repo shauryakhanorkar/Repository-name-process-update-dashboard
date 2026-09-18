@@ -36,12 +36,42 @@ import {
 } from './services/processUpdatesService';
 import { PROCESS_OPTIONS } from './constants/processes';
 
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function updateDateKey(update: ProjectUpdate): string | null {
+  const parsed = new Date(update.timestamp || update.date);
+  return Number.isNaN(parsed.getTime()) ? null : localDateKey(parsed);
+}
+
+function updateTimestamp(update: ProjectUpdate): number {
+  const parsed = Date.parse(update.timestamp || update.date);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function isCompletedStatus(status: string): boolean {
+  const normalizedStatus = status.trim().toLowerCase();
+  return normalizedStatus === 'done' || normalizedStatus === 'completed';
+}
+
+function isInProgressStatus(status: string): boolean {
+  const normalizedStatus = status.trim().toLowerCase();
+  return normalizedStatus === 'in progress' || normalizedStatus === 'in-progress' || normalizedStatus === 'inprogress';
+}
+
 
 export default function App() {
 
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'production' | 'notes' | 'dispatch' | 'reports' | 'bom' | 'inventory'
   >('dashboard');
+
+  const [selectedProductionSONumber, setSelectedProductionSONumber] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => localDateKey(new Date()));
 
   // Navigation is a drawer so the dashboard never loses horizontal space.
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -384,35 +414,71 @@ export default function App() {
      MAIN PANEL PIE CHART
      ========================================================= */
 
+  const panelCategoryData = useMemo(() => {
+    const panelCategories = [
+      'Meter Panel',
+      'PDB Panel',
+      'MCC Panel',
+      'APFC Panel',
+      'PCC Panel',
+      'Enclosure Box',
+      'ACB Panel',
+      'ATS Box',
+    ];
+    const otherPanelCategories = [
+      'Street Light Panel',
+      'High Mast Panel',
+      'UPS Panel',
+      'Main LT Panel',
+      'PLC Panel',
+      'Fidder Piller',
+    ];
+    const normalizePanelValue = (value: string | null | undefined) =>
+      value?.trim().toLocaleLowerCase() || '';
+    const panelCategoryByKey = new Map(
+      panelCategories.map((category) => [normalizePanelValue(category), category])
+    );
+    const otherPanelCategoryByKey = new Map(
+      otherPanelCategories.map((category) => [normalizePanelValue(category), category])
+    );
+    const panelCounts = new Map<string, number>([
+      ...panelCategories.map((category) => [category, 0] as const),
+      ['N/A', 0],
+    ]);
+    const otherPanelCounts = new Map<string, number>([
+      ...otherPanelCategories.map((category) => [category, 0] as const),
+      ['N/A', 0],
+    ]);
+
+    filteredUpdates.forEach((update) => {
+      const panelCategory = panelCategoryByKey.get(normalizePanelValue(update.panelType));
+      const otherPanelCategory = otherPanelCategoryByKey.get(normalizePanelValue(update.otherPanelTypes));
+
+      if (panelCategory) {
+        panelCounts.set(panelCategory, (panelCounts.get(panelCategory) || 0) + 1);
+      } else if (otherPanelCategory) {
+        otherPanelCounts.set(otherPanelCategory, (otherPanelCounts.get(otherPanelCategory) || 0) + 1);
+      } else {
+        panelCounts.set('N/A', (panelCounts.get('N/A') || 0) + 1);
+      }
+    });
+
+    return {
+      panel: panelCategories.concat('N/A').map((name) => ({
+        name,
+        value: panelCounts.get(name) || 0,
+      })),
+      other: otherPanelCategories.concat('N/A').map((name) => ({
+        name,
+        value: otherPanelCounts.get(name) || 0,
+      })),
+    };
+  }, [filteredUpdates]);
+
   const panelPieData =
     useMemo<PieChartDataPoint[]>(() => {
-
-      const mainPanels = Array.from(
-        new Set(
-          filteredUpdates.map(
-            (update) => update.panelType
-          )
-        )
-      ).filter(
-        (panel): panel is string =>
-          Boolean(panel?.trim()) &&
-          panel.trim().toUpperCase() !== 'N/A'
-      );
-
-
-      return mainPanels.map(
-        (panel) => ({
-          name: panel,
-
-          value:
-            filteredUpdates.filter(
-              (u) =>
-                u.panelType === panel
-            ).length,
-        })
-      );
-
-    }, [filteredUpdates]);
+      return panelCategoryData.panel;
+    }, [panelCategoryData]);
 
 
   /* =========================================================
@@ -421,77 +487,60 @@ export default function App() {
 
   const otherPanelPieData =
     useMemo<PieChartDataPoint[]>(() => {
-
-      const otherPanels = Array.from(
-        new Set(
-          filteredUpdates.map(
-            (update) => update.otherPanelTypes
-          )
-        )
-      ).filter(
-        (panel): panel is string =>
-          Boolean(panel?.trim()) &&
-          panel.trim().toUpperCase() !== 'N/A'
-      );
-
-
-      return otherPanels.map(
-        (panel) => ({
-          name: panel,
-
-          value:
-            filteredUpdates.filter(
-              (u) =>
-                u.otherPanelTypes === panel
-            ).length,
-        })
-      );
-
-    }, [filteredUpdates]);
+      return panelCategoryData.other;
+    }, [panelCategoryData]);
 
 
   /* =========================================================
-     TOTAL PANELS KPI
-     =========================================================
-     
-     Counts UNIQUE S.O. NUMBERS only.
+     DAILY DASHBOARD KPIS
      ========================================================= */
 
-  const totalPanels = useMemo(() => {
+  const dailyKpis = useMemo(() => {
+    const selectedDateUpdates = projectUpdates.filter(
+      (update) => updateDateKey(update) === selectedDate
+    );
+    const selectedProjects = new Set(
+      selectedDateUpdates
+        .map((update) => update.soNumber.trim())
+        .filter(Boolean)
+    );
+    const completedProcesses = new Set(
+      selectedDateUpdates
+        .filter((update) => isCompletedStatus(update.status))
+        .map((update) => `${update.soNumber.trim()}|${update.process}`)
+        .filter((key) => !key.startsWith('|'))
+    );
+    const latestByProject = new Map<string, ProjectUpdate>();
 
-    const uniqueSONumbers =
-      new Set(
-        filteredUpdates
-          .map(
-            (item) =>
-              item.soNumber
-          )
-          .filter(
-            (value): value is string =>
-              Boolean(
-                value &&
-                value.trim()
-              )
-          )
-      );
+    projectUpdates.forEach((update) => {
+      const soNumber = update.soNumber.trim();
+      if (!soNumber || !selectedProjects.has(soNumber)) return;
 
+      const current = latestByProject.get(soNumber);
+      if (!current || updateTimestamp(update) > updateTimestamp(current) || (
+        updateTimestamp(update) === updateTimestamp(current) &&
+        (update.processOrder ?? 0) > (current.processOrder ?? 0)
+      )) {
+        latestByProject.set(soNumber, update);
+      }
+    });
 
-    return uniqueSONumbers.size;
+    const latestUpdates = Array.from(latestByProject.values());
+    const health = selectedDateUpdates.length === 0
+      ? { label: 'NO UPDATES', subtitle: 'No production activity', color: 'slate' }
+      : selectedDateUpdates.some((update) => update.status.trim().toLowerCase() === 'pending')
+        ? { label: 'AT RISK', subtitle: 'Needs monitoring', color: 'orange' }
+        : selectedDateUpdates.every((update) => isCompletedStatus(update.status))
+          ? { label: 'HEALTHY', subtitle: 'Normal production', color: 'emerald' }
+          : { label: 'ATTENTION', subtitle: 'Needs attention', color: 'purple' };
 
-  }, [filteredUpdates]);
-
-  const dashboardKpis = useMemo(() => ({
-    totalProjects: totalPanels,
-    inProgress: filteredUpdates.filter(
-      (update) => update.status === 'In Progress'
-    ).length,
-    pending: filteredUpdates.filter(
-      (update) => update.status === 'Pending'
-    ).length,
-    completed: filteredUpdates.filter(
-      (update) => update.status === 'Done'
-    ).length,
-  }), [filteredUpdates, totalPanels]);
+    return {
+      projects: selectedProjects.size,
+      completed: completedProcesses.size,
+      inProgress: latestUpdates.filter((update) => isInProgressStatus(update.status)).length,
+      health,
+    };
+  }, [projectUpdates, selectedDate]);
 
 
 
@@ -651,65 +700,77 @@ export default function App() {
                 <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm shadow-blue-100/60">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                      Total Projects
+                      Today's Projects
                     </p>
                     <div className="rounded-xl bg-blue-100 p-2 text-blue-600">
                       <BriefcaseBusiness className="h-4 w-4" />
                     </div>
                   </div>
                   <p className="text-3xl font-bold leading-none text-slate-800">
-                    {dashboardKpis.totalProjects}
+                    {dailyKpis.projects}
                   </p>
-                  <div className="h-1 w-12 rounded-full bg-blue-500/70" />
+                  <p className="text-[11px] font-medium text-blue-700">Projects updated on selected date</p>
                 </div>
 
                 <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 to-white p-4 shadow-sm shadow-orange-100/60">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">
-                      In Progress
+                      Completed Today
                     </p>
                     <div className="rounded-xl bg-orange-100 p-2 text-orange-600">
                       <LoaderCircle className="h-4 w-4" />
                     </div>
                   </div>
                   <p className="text-3xl font-bold leading-none text-slate-800">
-                    {dashboardKpis.inProgress}
+                    {dailyKpis.completed}
                   </p>
-                  <div className="h-1 w-12 rounded-full bg-orange-500/70" />
+                  <p className="text-[11px] font-medium text-orange-700">Completed on selected date</p>
                 </div>
 
                 <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50 to-white p-4 shadow-sm shadow-purple-100/60">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">
-                      Pending
+                      In Progress Today
                     </p>
                     <div className="rounded-xl bg-purple-100 p-2 text-purple-600">
                       <Clock3 className="h-4 w-4" />
                     </div>
                   </div>
                   <p className="text-3xl font-bold leading-none text-slate-800">
-                    {dashboardKpis.pending}
+                    {dailyKpis.inProgress}
                   </p>
-                  <div className="h-1 w-12 rounded-full bg-purple-500/70" />
+                  <p className="text-[11px] font-medium text-purple-700">Currently in production</p>
                 </div>
 
                 <div className="flex min-h-[116px] flex-col justify-between rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm shadow-emerald-100/60">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                      Completed
+                      Production Health
                     </p>
                     <div className="rounded-xl bg-emerald-100 p-2 text-emerald-600">
                       <CheckCircle2 className="h-4 w-4" />
                     </div>
                   </div>
-                  <p className="text-3xl font-bold leading-none text-slate-800">
-                    {dashboardKpis.completed}
+                  <p className={`text-2xl font-bold leading-none ${
+                    dailyKpis.health.color === 'emerald' ? 'text-emerald-700' :
+                      dailyKpis.health.color === 'orange' ? 'text-orange-700' :
+                        dailyKpis.health.color === 'purple' ? 'text-purple-700' : 'text-slate-600'
+                  }`}>
+                    {dailyKpis.health.label}
                   </p>
-                  <div className="h-1 w-12 rounded-full bg-emerald-500/70" />
+                  <p className="text-[11px] font-medium text-emerald-700">{dailyKpis.health.subtitle}</p>
                 </div>
               </div>
 
-              <ProcessChart data={processChartData} />
+              <ProcessChart
+                data={projectUpdates}
+                selectedDate={selectedDate}
+                onDateChange={setSelectedDate}
+                onSelectOrder={(soNumber) => {
+                  setSelectedProductionSONumber(soNumber);
+                  setActiveTab('production');
+                }}
+              />
 
 
               {/* =============================================
@@ -751,6 +812,14 @@ export default function App() {
                   data={
                     filteredUpdates
                   }
+                  allData={
+                    projectUpdates
+                  }
+                  selectedDate={selectedDate}
+                  onSelectOrder={(soNumber) => {
+                    setSelectedProductionSONumber(soNumber);
+                    setActiveTab('production');
+                  }}
                 />
 
 
@@ -773,7 +842,7 @@ export default function App() {
           {!loading &&
             !errorMessage &&
             activeTab === 'production' && (
-              <ProductionPage data={projectUpdates} />
+              <ProductionPage data={projectUpdates} selectedSONumber={selectedProductionSONumber} />
             )}
 
 

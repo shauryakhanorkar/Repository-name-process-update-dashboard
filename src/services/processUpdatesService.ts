@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { ProjectUpdate } from '../types';
+import { PROCESS_OPTIONS } from '../constants/processes';
 
 
 /* =========================================================
@@ -53,7 +54,18 @@ function mapSupabaseRowToProjectUpdate(
   row: ProcessUpdateRow
 ): ProjectUpdate {
 
+  const submittedProcess = row.process?.trim() || '';
+  const normalizedProcess = submittedProcess
+    .replace(/\s+updates?$/i, '')
+    .replace(/assembly\s*&\s*wiring/i, 'Assembly and Wiring')
+    .trim();
+  const process = PROCESS_OPTIONS.find(
+    (option) => option.toLowerCase() === normalizedProcess.toLowerCase()
+  ) || '';
+
   return {
+    processOrder: row.process_order,
+
     timestamp: row.timestamp ?? '',
 
     customerName: row.customer_name ?? '',
@@ -94,7 +106,7 @@ function mapSupabaseRowToProjectUpdate(
      */
     otherPanelTypes: row.other_panel_types ?? '',
 
-    process: row.process ?? '',
+    process,
 
     status: row.status ?? '',
 
