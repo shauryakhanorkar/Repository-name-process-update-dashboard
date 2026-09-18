@@ -321,6 +321,7 @@ export default function App() {
 
 
       return (
+        updateDateKey(item) === selectedDate &&
         soNumberMatch &&
         panelMatch &&
         processMatch &&
@@ -330,6 +331,7 @@ export default function App() {
 
   }, [
     projectUpdates,
+    selectedDate,
     selectedSONumber,
     selectedPanel,
     selectedProcess,

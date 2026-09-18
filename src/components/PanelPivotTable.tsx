@@ -11,10 +11,44 @@ interface PanelPivotTableProps {
   data: ProjectUpdate[];
 }
 
+function updateTimestamp(update: ProjectUpdate): number {
+  const parsed = Date.parse(update.timestamp || update.date);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function isCompletedStatus(status: string): boolean {
+  const normalizedStatus = status.trim().toLowerCase();
+  return normalizedStatus === 'done' || normalizedStatus === 'completed';
+}
+
+function isInProgressStatus(status: string): boolean {
+  const normalizedStatus = status.trim().toLowerCase();
+  return normalizedStatus === 'in progress' || normalizedStatus === 'in-progress' || normalizedStatus === 'inprogress';
+}
+
 export default function PanelPivotTable({ data }: PanelPivotTableProps) {
+  const latestProjectUpdates = useMemo(() => {
+    const latestByProject = new Map<string, ProjectUpdate>();
+
+    data.forEach((update) => {
+      const soNumber = update.soNumber.trim();
+      if (!soNumber) return;
+
+      const current = latestByProject.get(soNumber);
+      if (!current || updateTimestamp(update) > updateTimestamp(current) || (
+        updateTimestamp(update) === updateTimestamp(current) &&
+        (update.processOrder ?? 0) > (current.processOrder ?? 0)
+      )) {
+        latestByProject.set(soNumber, update);
+      }
+    });
+
+    return Array.from(latestByProject.values());
+  }, [data]);
+
   const panelSummary = useMemo(() => {
     const panelTypes = Array.from(
-      new Set(data.map((item) => item.panelType))
+      new Set(latestProjectUpdates.map((item) => item.panelType))
     ).filter(
       (panelType): panelType is string =>
         Boolean(panelType?.trim()) &&
@@ -22,14 +56,17 @@ export default function PanelPivotTable({ data }: PanelPivotTableProps) {
     );
 
     return panelTypes.map((panelType) => {
-      const pending = data.filter(
-        (item) => item.panelType === panelType && item.status === 'Pending'
+      const panelProjects = latestProjectUpdates.filter(
+        (item) => item.panelType === panelType
+      );
+      const pending = panelProjects.filter(
+        (item) => !isCompletedStatus(item.status) && !isInProgressStatus(item.status)
       ).length;
-      const inProgress = data.filter(
-        (item) => item.panelType === panelType && item.status === 'In Progress'
+      const inProgress = panelProjects.filter(
+        (item) => isInProgressStatus(item.status)
       ).length;
-      const done = data.filter(
-        (item) => item.panelType === panelType && item.status === 'Done'
+      const done = panelProjects.filter(
+        (item) => isCompletedStatus(item.status)
       ).length;
 
       return {
@@ -48,21 +85,18 @@ export default function PanelPivotTable({ data }: PanelPivotTableProps) {
       left.completion - right.completion ||
       right.pending - left.pending
     );
-  }, [data]);
+  }, [latestProjectUpdates]);
 
-  const totalPanels = panelSummary.length;
-  const totalCompleted = panelSummary.reduce(
-    (sum, panel) => sum + panel.done,
-    0
-  );
-  const totalPending = panelSummary.reduce(
-    (sum, panel) => sum + panel.pending,
-    0
-  );
-  const totalInProgress = panelSummary.reduce(
-    (sum, panel) => sum + panel.inProgress,
-    0
-  );
+  const totalPanels = latestProjectUpdates.length;
+  const totalCompleted = latestProjectUpdates.filter(
+    (update) => isCompletedStatus(update.status)
+  ).length;
+  const totalPending = latestProjectUpdates.filter(
+    (update) => !isCompletedStatus(update.status) && !isInProgressStatus(update.status)
+  ).length;
+  const totalInProgress = latestProjectUpdates.filter(
+    (update) => isInProgressStatus(update.status)
+  ).length;
   const highestPendingPanel = panelSummary.reduce(
     (highest, panel) =>
       !highest || panel.pending > highest.pending
