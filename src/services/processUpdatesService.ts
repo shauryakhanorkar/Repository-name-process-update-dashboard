@@ -112,6 +112,12 @@ function mapSupabaseRowToProjectUpdate(
 
     date: row.date ?? '',
 
+    details: row.details,
+
+    formName: row.form_name,
+
+    employeeEmail: row.employee_email,
+
     note_remarks: row.note_remarks,
 
     employeeName: row.employee_name

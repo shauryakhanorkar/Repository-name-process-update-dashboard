@@ -35,17 +35,13 @@ import {
   fetchProcessUpdates,
 } from './services/processUpdatesService';
 import { PROCESS_OPTIONS } from './constants/processes';
+import { businessDateKey, isActualSubmittedUpdate } from './lib/projectDates';
 
 function localDateKey(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-function updateDateKey(update: ProjectUpdate): string | null {
-  const parsed = new Date(update.timestamp || update.date);
-  return Number.isNaN(parsed.getTime()) ? null : localDateKey(parsed);
 }
 
 function updateTimestamp(update: ProjectUpdate): number {
@@ -321,7 +317,8 @@ export default function App() {
 
 
       return (
-        updateDateKey(item) === selectedDate &&
+        isActualSubmittedUpdate(item) &&
+        businessDateKey(item) === selectedDate &&
         soNumberMatch &&
         panelMatch &&
         processMatch &&
@@ -499,22 +496,16 @@ export default function App() {
 
   const dailyKpis = useMemo(() => {
     const selectedDateUpdates = projectUpdates.filter(
-      (update) => updateDateKey(update) === selectedDate
+      (update) => isActualSubmittedUpdate(update) && businessDateKey(update) === selectedDate && update.process.trim()
     );
     const selectedProjects = new Set(
       selectedDateUpdates
         .map((update) => update.soNumber.trim())
         .filter(Boolean)
     );
-    const completedProcesses = new Set(
-      selectedDateUpdates
-        .filter((update) => isCompletedStatus(update.status))
-        .map((update) => `${update.soNumber.trim()}|${update.process}`)
-        .filter((key) => !key.startsWith('|'))
-    );
     const latestByProject = new Map<string, ProjectUpdate>();
 
-    projectUpdates.forEach((update) => {
+    selectedDateUpdates.forEach((update) => {
       const soNumber = update.soNumber.trim();
       if (!soNumber || !selectedProjects.has(soNumber)) return;
 
@@ -528,18 +519,22 @@ export default function App() {
     });
 
     const latestUpdates = Array.from(latestByProject.values());
-    const health = selectedDateUpdates.length === 0
+    const completed = latestUpdates.filter((update) => isCompletedStatus(update.status)).length;
+    const inProgress = latestUpdates.filter((update) => isInProgressStatus(update.status)).length;
+    const pending = latestUpdates.filter((update) => update.status.trim().toLowerCase() === 'pending').length;
+    const health = latestUpdates.length === 0
       ? { label: 'NO UPDATES', subtitle: 'No production activity', color: 'slate' }
-      : selectedDateUpdates.some((update) => update.status.trim().toLowerCase() === 'pending')
+      : pending > 0
         ? { label: 'AT RISK', subtitle: 'Needs monitoring', color: 'orange' }
-        : selectedDateUpdates.every((update) => isCompletedStatus(update.status))
+        : completed === latestUpdates.length
           ? { label: 'HEALTHY', subtitle: 'Normal production', color: 'emerald' }
           : { label: 'ATTENTION', subtitle: 'Needs attention', color: 'purple' };
 
     return {
       projects: selectedProjects.size,
-      completed: completedProcesses.size,
-      inProgress: latestUpdates.filter((update) => isInProgressStatus(update.status)).length,
+      completed,
+      inProgress,
+      pending,
       health,
     };
   }, [projectUpdates, selectedDate]);

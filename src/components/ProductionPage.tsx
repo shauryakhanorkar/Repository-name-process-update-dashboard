@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ProjectUpdate } from '../types';
+import { isActualSubmittedUpdate } from '../lib/projectDates';
 
 interface ProductionPageProps {
   data: ProjectUpdate[];
@@ -70,7 +71,7 @@ function formatDateTime(update: ProjectUpdate | null): string {
 }
 
 function latestUpdate(updates: ProjectUpdate[]): ProjectUpdate | null {
-  return updates.reduce<ProjectUpdate | null>((latest, update) => {
+  return updates.filter(isActualSubmittedUpdate).reduce<ProjectUpdate | null>((latest, update) => {
     if (!latest || getUpdateTime(update) >= getUpdateTime(latest)) return update;
     return latest;
   }, null);
@@ -236,6 +237,7 @@ export default function ProductionPage({ data, selectedSONumber: requestedSONumb
     return Array.from(bySO.entries())
       .map(([soNumber, updates]) => {
         const productionUpdates = updates.filter((update) =>
+          isActualSubmittedUpdate(update) &&
           PRODUCTION_STAGES.includes(normalizeProcess(update.process) as ProductionStage),
         );
         const lastUpdated = latestUpdate(productionUpdates) || latestUpdate(updates);

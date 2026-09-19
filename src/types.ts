@@ -30,6 +30,12 @@ export interface ProjectUpdate {
 
   date: string;
 
+  details?: unknown;
+
+  formName?: string | null;
+
+  employeeEmail?: string | null;
+
   note_remarks: string | null;
 
   employeeName?: string | null;

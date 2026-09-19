@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Check } from 'lucide-react';
 import { ProjectUpdate } from '../types';
+import { businessDateKey, isActualSubmittedUpdate } from '../lib/projectDates';
 
 interface ProcessPivotTableProps {
   data: ProjectUpdate[];
@@ -39,27 +40,14 @@ interface CustomerProgress {
   latestTimestamp: string;
 }
 
-function localDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function updateDateKey(update: ProjectUpdate): string | null {
-  const parsed = new Date(update.timestamp || update.date);
-  return Number.isNaN(parsed.getTime()) ? null : localDateKey(parsed);
-}
-
 function getTimestampValue(update: ProjectUpdate) {
   const value = Date.parse(update.timestamp || update.date);
   return Number.isNaN(value) ? 0 : value;
 }
 
 function getProjectKey(update: ProjectUpdate): string {
-  const customerName = update.customerName.trim();
   const soNumber = update.soNumber.trim();
-  return `${customerName}|${soNumber || update.panelName.trim()}`;
+  return soNumber || update.panelName.trim();
 }
 
 function isCompletedStatus(status: string): boolean {
@@ -85,7 +73,7 @@ export default function ProcessPivotTable({
   ).sort((left, right) => left.localeCompare(right)), [data]);
 
   const selectedDateUpdates = useMemo(() => data.filter(
-    (item) => updateDateKey(item) === selectedDate &&
+    (item) => isActualSubmittedUpdate(item) && businessDateKey(item) === selectedDate &&
       (selectedCustomer === 'All Customers' || item.customerName.trim() === selectedCustomer)
   ), [data, selectedCustomer, selectedDate]);
 
@@ -94,13 +82,23 @@ export default function ProcessPivotTable({
 
     selectedDateUpdates.forEach((item) => {
       if (!PROCESSES.includes(item.process)) return;
-      selectedProjects.set(getProjectKey(item), item);
+      const projectKey = getProjectKey(item);
+      const current = selectedProjects.get(projectKey);
+      if (!current || getTimestampValue(item) > getTimestampValue(current) || (
+        getTimestampValue(item) === getTimestampValue(current) &&
+        (item.processOrder ?? 0) > (current.processOrder ?? 0)
+      )) {
+        selectedProjects.set(projectKey, item);
+      }
     });
 
     return Array.from(selectedProjects.entries())
       .map(([rowKey, selectedProject]) => {
         const updates = allData.filter((item) =>
-          getProjectKey(item) === rowKey && PROCESSES.includes(item.process)
+          isActualSubmittedUpdate(item) &&
+          getProjectKey(item) === rowKey &&
+          businessDateKey(item) === selectedDate &&
+          PROCESSES.includes(item.process)
         );
         const sortedUpdates = [...updates].sort((left, right) => {
           const timestampDifference = getTimestampValue(right) - getTimestampValue(left);

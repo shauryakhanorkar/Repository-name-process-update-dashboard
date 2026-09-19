@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ArrowRight, CalendarDays } from 'lucide-react';
 import { ProjectUpdate } from '../types';
+import { businessDateKey, isActualSubmittedUpdate } from '../lib/projectDates';
 
 interface ProcessChartProps {
   data: ProjectUpdate[];
@@ -36,11 +37,6 @@ function localDateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function updateDateKey(update: ProjectUpdate): string | null {
-  const parsed = new Date(update.timestamp || update.date);
-  return Number.isNaN(parsed.getTime()) ? null : localDateKey(parsed);
-}
-
 export default function ProcessChart({ data, onSelectOrder, selectedDate, onDateChange }: ProcessChartProps) {
   const todayDate = localDateKey(new Date());
   const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-GB', {
@@ -53,20 +49,20 @@ export default function ProcessChart({ data, onSelectOrder, selectedDate, onDate
   const selectedDateUpdates = useMemo(() => {
     const latestByOrder = new Map<string, ProjectUpdate>();
 
-    data.filter((update) => updateDateKey(update) === selectedDate).forEach((update) => {
-      const soNumber = update.soNumber.trim();
-      if (!soNumber) return;
-      const current = latestByOrder.get(soNumber);
-      if (!current || compareUpdates(update, current) >= 0) {
-        latestByOrder.set(soNumber, update);
-      }
-    });
+    data
+      .filter((update) => isActualSubmittedUpdate(update) && businessDateKey(update) === selectedDate && update.process.trim())
+      .forEach((update) => {
+        const soNumber = update.soNumber.trim();
+        if (!soNumber) return;
+        const current = latestByOrder.get(soNumber);
+        if (!current || compareUpdates(update, current) >= 0) {
+          latestByOrder.set(soNumber, update);
+        }
+      });
 
-    return Array.from(latestByOrder.values())
-      .filter((update) => update.process.trim())
-      .sort(
+    return Array.from(latestByOrder.values()).sort(
       (left, right) => compareUpdates(right, left),
-      );
+    );
   }, [data, selectedDate]);
 
   return (

@@ -6,6 +6,7 @@ import {
   LoaderCircle,
 } from 'lucide-react';
 import { ProjectUpdate } from '../types';
+import { isActualSubmittedUpdate } from '../lib/projectDates';
 
 interface PanelPivotTableProps {
   data: ProjectUpdate[];
@@ -30,7 +31,7 @@ export default function PanelPivotTable({ data }: PanelPivotTableProps) {
   const latestProjectUpdates = useMemo(() => {
     const latestByProject = new Map<string, ProjectUpdate>();
 
-    data.forEach((update) => {
+    data.filter(isActualSubmittedUpdate).forEach((update) => {
       const soNumber = update.soNumber.trim();
       if (!soNumber) return;
 
