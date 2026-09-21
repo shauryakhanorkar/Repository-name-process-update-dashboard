@@ -27,11 +27,62 @@ function isInProgressStatus(status: string): boolean {
   return normalizedStatus === 'in progress' || normalizedStatus === 'in-progress' || normalizedStatus === 'inprogress';
 }
 
+const PANEL_CATEGORIES = [
+  'Meter Panel',
+  'PDB Panel',
+  'MCC Panel',
+  'APFC Panel',
+  'PCC Panel',
+  'Enclosure Box',
+  'ACB Panel',
+  'ATS Box',
+  'Street Light Panel',
+  'High Mast Panel',
+  'UPS Panel',
+  'Main LT Panel',
+  'PLC Panel',
+  'Fidder Piller',
+] as const;
+
+const PANEL_CATEGORY_BY_KEY = new Map(
+  PANEL_CATEGORIES.map((category) => [category.toLowerCase(), category])
+);
+
+function isPanelPivotUpdate(update: ProjectUpdate): boolean {
+  if (!isActualSubmittedUpdate(update)) return false;
+
+  const formName = update.formName?.trim().toLowerCase();
+  return formName !== 'auto-marked (prior stage)';
+}
+
+function panelCategory(update: ProjectUpdate): string {
+  const panelType = update.panelType.trim();
+  const otherPanelTypes = update.otherPanelTypes.trim();
+  const normalizedPanelType = panelType.toLowerCase();
+  const normalizedOtherPanelTypes = otherPanelTypes.toLowerCase();
+
+  if (panelType && normalizedPanelType !== 'n/a') {
+    return PANEL_CATEGORY_BY_KEY.get(normalizedPanelType) || panelType;
+  }
+
+  if (otherPanelTypes && normalizedOtherPanelTypes !== 'n/a') {
+    return PANEL_CATEGORY_BY_KEY.get(normalizedOtherPanelTypes) || otherPanelTypes;
+  }
+
+  return 'N/A';
+}
+
+function statusCategory(status: string): 'done' | 'inProgress' | 'pending' {
+  if (isCompletedStatus(status)) return 'done';
+  if (isInProgressStatus(status)) return 'inProgress';
+  return 'pending';
+}
+
 export default function PanelPivotTable({ data }: PanelPivotTableProps) {
   const latestProjectUpdates = useMemo(() => {
     const latestByProject = new Map<string, ProjectUpdate>();
 
-    data.filter(isActualSubmittedUpdate).forEach((update) => {
+    data.filter(isPanelPivotUpdate).forEach((update) => {
       const soNumber = update.soNumber.trim();
       if (!soNumber) return;
 
@@ -49,25 +100,21 @@ export default function PanelPivotTable({ data }: PanelPivotTableProps) {
 
   const panelSummary = useMemo(() => {
     const panelTypes = Array.from(
-      new Set(latestProjectUpdates.map((item) => item.panelType))
-    ).filter(
-      (panelType): panelType is string =>
-        Boolean(panelType?.trim()) &&
-        panelType.trim().toUpperCase() !== 'N/A'
+      new Set(latestProjectUpdates.map(panelCategory))
     );
 
     return panelTypes.map((panelType) => {
       const panelProjects = latestProjectUpdates.filter(
-        (item) => item.panelType === panelType
+        (item) => panelCategory(item) === panelType
       );
       const pending = panelProjects.filter(
-        (item) => !isCompletedStatus(item.status) && !isInProgressStatus(item.status)
+        (item) => statusCategory(item.status) === 'pending'
       ).length;
       const inProgress = panelProjects.filter(
-        (item) => isInProgressStatus(item.status)
+        (item) => statusCategory(item.status) === 'inProgress'
       ).length;
       const done = panelProjects.filter(
-        (item) => isCompletedStatus(item.status)
+        (item) => statusCategory(item.status) === 'done'
       ).length;
 
       return {

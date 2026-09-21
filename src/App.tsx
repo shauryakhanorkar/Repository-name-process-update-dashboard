@@ -9,6 +9,7 @@ import {
   Clock3,
   LoaderCircle,
   Menu,
+  ArrowLeft,
 } from 'lucide-react';
 
 import Sidebar from './components/Sidebar';
@@ -71,6 +72,33 @@ export default function App() {
 
   // Navigation is a drawer so the dashboard never loses horizontal space.
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const handleTabChange = (tab: typeof activeTab) => {
+    if (tab === activeTab) return;
+
+    window.history.pushState({ dashboardTab: tab }, '', window.location.href);
+    setActiveTab(tab);
+  };
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      setActiveTab('dashboard');
+    }
+  };
+
+  useEffect(() => {
+    window.history.replaceState({ dashboardTab: 'dashboard' }, '', window.location.href);
+
+    const handlePopState = (event: PopStateEvent) => {
+      const tab = event.state?.dashboardTab;
+      setActiveTab(tab || 'dashboard');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
 
   /* =========================================================
@@ -551,7 +579,7 @@ export default function App() {
 
       <Sidebar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
@@ -559,15 +587,27 @@ export default function App() {
       {/* Slim application bar. The drawer opens over the page, so this never reserves sidebar width. */}
       <div className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8 2xl:px-10">
-          <button
-            type="button"
-            onClick={() => setIsSidebarOpen(true)}
-            aria-label="Open navigation"
-            aria-expanded={isSidebarOpen}
-            className="group flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95"
-          >
-            <Menu className="h-5 w-5 transition group-hover:scale-105" />
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              aria-label="Open navigation"
+              aria-expanded={isSidebarOpen}
+              className="group flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95"
+            >
+              <Menu className="h-5 w-5 transition group-hover:scale-105" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleBack}
+              aria-label="Go back"
+              className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 sm:px-4"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back</span>
+            </button>
+          </div>
 
           <div className="hidden items-center gap-2 text-right sm:flex">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -765,7 +805,7 @@ export default function App() {
                 onDateChange={setSelectedDate}
                 onSelectOrder={(soNumber) => {
                   setSelectedProductionSONumber(soNumber);
-                  setActiveTab('production');
+                  handleTabChange('production');
                 }}
               />
 
@@ -815,7 +855,7 @@ export default function App() {
                   selectedDate={selectedDate}
                   onSelectOrder={(soNumber) => {
                     setSelectedProductionSONumber(soNumber);
-                    setActiveTab('production');
+                    handleTabChange('production');
                   }}
                 />
 
