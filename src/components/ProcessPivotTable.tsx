@@ -215,7 +215,7 @@ export default function ProcessPivotTable({
                       onSelectOrder(customer.soNumber);
                     }
                   }}
-                  className="grid cursor-pointer grid-cols-[minmax(220px,1.1fr)_minmax(840px,3fr)] items-center py-4 text-sm outline-none hover:bg-slate-50 focus:bg-slate-50"
+                  className="grid cursor-pointer grid-cols-[minmax(220px,1.1fr)_minmax(840px,3fr)] items-center py-1.5 text-sm outline-none hover:bg-slate-50 focus:bg-slate-50"
                 >
                   <div className="min-w-0 px-3">
                     <div className="truncate font-semibold text-slate-700">{customer.customerName}</div>
@@ -223,7 +223,7 @@ export default function ProcessPivotTable({
                     <div className="mt-0.5 truncate text-xs text-slate-400">{customer.panel || 'Panel not available'}</div>
                   </div>
                   <div className="px-2">
-                    <div className="grid min-h-[72px] grid-cols-6 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                    <div className="grid min-h-[30px] grid-cols-6 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
                       {PROCESSES.map((process, index) => {
                         const processUpdate = customer.processUpdates[process];
                         const latestProcessIsCompleted = isCompletedStatus(customer.status);
@@ -243,7 +243,7 @@ export default function ProcessPivotTable({
                         return (
                           <div
                             key={process}
-                            className={`flex min-w-0 flex-col justify-center border-r border-white/70 px-2 py-1.5 last:border-r-0 ${isCompleted ? 'bg-emerald-500 text-white' : isInProgress ? 'bg-amber-400 text-amber-950' : isCurrent ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'}`}
+                            className={`flex min-w-0 flex-col justify-center border-r border-white/70 px-2 py-0.5 last:border-r-0 ${isCompleted ? 'bg-emerald-500 text-white' : isInProgress ? 'bg-amber-400 text-amber-950' : isCurrent ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'}`}
                           >
                             <div className="flex items-center gap-1 text-[10px] font-bold leading-tight">
                               {isCompleted && <Check className="h-3 w-3 shrink-0" />}

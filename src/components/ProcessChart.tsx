@@ -21,6 +21,34 @@ function compareUpdates(left: ProjectUpdate, right: ProjectUpdate): number {
   return (left.processOrder || 0) - (right.processOrder || 0);
 }
 
+function isRealSubmittedUpdate(update: ProjectUpdate): boolean {
+  if (!isActualSubmittedUpdate(update)) return false;
+
+  return update.formName?.trim().toLowerCase() !== 'auto-marked (prior stage)';
+}
+
+function isCompletedStatus(status: string): boolean {
+  const normalizedStatus = status.trim().toLowerCase();
+  return normalizedStatus === 'done' || normalizedStatus === 'completed';
+}
+
+function isInProgressStatus(status: string): boolean {
+  const normalizedStatus = status.trim().toLowerCase();
+  return normalizedStatus === 'in progress' || normalizedStatus === 'in-progress' || normalizedStatus === 'inprogress';
+}
+
+function getProjectHealth(updates: ProjectUpdate[]): 'HEALTHY' | 'AT RISK' | 'ATTENTION' | 'NO UPDATES' {
+  const latestUpdate = [...updates]
+    .filter(isRealSubmittedUpdate)
+    .sort((left, right) => compareUpdates(right, left))[0];
+
+  if (!latestUpdate) return 'NO UPDATES';
+  if (latestUpdate.status.trim().toLowerCase() === 'pending') return 'AT RISK';
+  if (isCompletedStatus(latestUpdate.status)) return 'HEALTHY';
+  if (isInProgressStatus(latestUpdate.status)) return 'ATTENTION';
+  return 'ATTENTION';
+}
+
 function formatUpdateTime(update: ProjectUpdate): string {
   const parsed = new Date(update.timestamp || update.date);
   if (Number.isNaN(parsed.getTime())) return 'N/A';
@@ -50,7 +78,7 @@ export default function ProcessChart({ data, onSelectOrder, selectedDate, onDate
     const latestByOrder = new Map<string, ProjectUpdate>();
 
     data
-      .filter((update) => isActualSubmittedUpdate(update) && businessDateKey(update) === selectedDate && update.process.trim())
+    .filter((update) => isRealSubmittedUpdate(update) && businessDateKey(update) === selectedDate && update.process.trim())
       .forEach((update) => {
         const soNumber = update.soNumber.trim();
         if (!soNumber) return;
@@ -99,6 +127,7 @@ export default function ProcessChart({ data, onSelectOrder, selectedDate, onDate
               {['S.O. Number', 'Panel', 'Current Process', 'Status', 'Latest Update', 'Note'].map((heading) => (
                 <th key={heading} className="px-3 pb-3 font-semibold first:pl-0 last:pr-0">{heading}</th>
               ))}
+              <th className="px-3 pb-3 font-semibold">Health</th>
               <th className="px-3 pb-3" />
             </tr>
           </thead>
@@ -115,11 +144,27 @@ export default function ProcessChart({ data, onSelectOrder, selectedDate, onDate
                 <td className="px-3 py-3.5"><span className="inline-flex rounded-full bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700">{update.status || 'N/A'}</span></td>
                 <td className="whitespace-nowrap px-3 py-3.5 text-slate-500">{isTodaySelected ? 'Today, ' : ''}{formatUpdateTime(update)}</td>
                 <td className="max-w-[220px] truncate px-3 py-3.5 text-slate-500">{update.note_remarks || 'N/A'}</td>
+                <td className="px-3 py-3.5">
+                  {(() => {
+                    const health = getProjectHealth(
+                      data.filter((item) => item.soNumber.trim() === update.soNumber.trim() && businessDateKey(item) === selectedDate)
+                    );
+                    const healthClassName = health === 'HEALTHY'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : health === 'AT RISK'
+                        ? 'bg-red-50 text-red-700'
+                        : health === 'ATTENTION'
+                          ? 'bg-amber-50 text-amber-700'
+                          : 'bg-slate-100 text-slate-500';
+
+                    return <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${healthClassName}`}>{health}</span>;
+                  })()}
+                </td>
                 <td className="px-3 py-3.5 pr-0 text-right"><ArrowRight className="ml-auto h-4 w-4 text-slate-400" /></td>
               </tr>
             ))}
             {!selectedDateUpdates.length && (
-              <tr><td colSpan={7} className="px-0 py-10 text-center text-sm text-slate-500">No production updates recorded on this date.</td></tr>
+              <tr><td colSpan={8} className="px-0 py-10 text-center text-sm text-slate-500">No production updates recorded on this date.</td></tr>
             )}
           </tbody>
         </table>

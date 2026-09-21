@@ -19,7 +19,6 @@ import ProductionPage from './components/ProductionPage';
 import ReportsPage from './components/ReportsPage';
 import Header from './components/Header';
 import ProcessChart from './components/ProcessChart';
-import StatusPieChart from './components/StatusPieChart';
 import PanelPieChart from './components/PanelPieChart';
 import OtherPanelPieChart from './components/OtherPanelPieChart';
 import NotesPage from './components/NotesPage';
@@ -409,35 +408,6 @@ export default function App() {
 
 
   /* =========================================================
-     STATUS PIE CHART
-     ========================================================= */
-
-  const statusPieData =
-    useMemo<PieChartDataPoint[]>(() => {
-
-      const statuses = [
-        'Done',
-        'Pending',
-        'In Progress',
-      ];
-
-
-      return statuses.map(
-        (status) => ({
-          name: status,
-
-          value:
-            filteredUpdates.filter(
-              (u) =>
-                u.status === status
-            ).length,
-        })
-      );
-
-    }, [filteredUpdates]);
-
-
-  /* =========================================================
      MAIN PANEL PIE CHART
      ========================================================= */
 
@@ -550,16 +520,18 @@ export default function App() {
     const completed = latestUpdates.filter((update) => isCompletedStatus(update.status)).length;
     const inProgress = latestUpdates.filter((update) => isInProgressStatus(update.status)).length;
     const pending = latestUpdates.filter((update) => update.status.trim().toLowerCase() === 'pending').length;
+    const totalProjects = latestUpdates.length;
     const health = latestUpdates.length === 0
-      ? { label: 'NO UPDATES', subtitle: 'No production activity', color: 'slate' }
+      ? { label: 'NO UPDATES', subtitle: 'No projects to monitor', color: 'slate' }
       : pending > 0
-        ? { label: 'AT RISK', subtitle: 'Needs monitoring', color: 'orange' }
+        ? { label: 'AT RISK', subtitle: 'Needs attention', color: 'orange' }
         : completed === latestUpdates.length
-          ? { label: 'HEALTHY', subtitle: 'Normal production', color: 'emerald' }
+          ? { label: 'HEALTHY', subtitle: 'All projects on track', color: 'emerald' }
           : { label: 'ATTENTION', subtitle: 'Needs attention', color: 'purple' };
 
     return {
       projects: selectedProjects.size,
+      totalProjects,
       completed,
       inProgress,
       pending,
@@ -788,7 +760,10 @@ export default function App() {
                       <CheckCircle2 className="h-4 w-4" />
                     </div>
                   </div>
-                  <p className={`text-2xl font-bold leading-none ${
+                  <p className="text-2xl font-bold leading-none text-slate-800">
+                    {dailyKpis.pending} / {dailyKpis.totalProjects}
+                  </p>
+                  <p className={`text-sm font-bold leading-none ${
                     dailyKpis.health.color === 'emerald' ? 'text-emerald-700' :
                       dailyKpis.health.color === 'orange' ? 'text-orange-700' :
                         dailyKpis.health.color === 'purple' ? 'text-purple-700' : 'text-slate-600'
@@ -808,35 +783,6 @@ export default function App() {
                   handleTabChange('production');
                 }}
               />
-
-
-              {/* =============================================
-                  THREE PIE CHARTS
-                  ============================================= */}
-
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-
-                <StatusPieChart
-                  data={
-                    statusPieData
-                  }
-                />
-
-
-                <PanelPieChart
-                  data={
-                    panelPieData
-                  }
-                />
-
-
-                <OtherPanelPieChart
-                  data={
-                    otherPanelPieData
-                  }
-                />
-
-              </div>
 
 
               {/* =============================================
@@ -866,6 +812,15 @@ export default function App() {
                   }
                 />
 
+              </div>
+
+              {/* =============================================
+                  PANEL CHARTS
+                  ============================================= */}
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <PanelPieChart data={panelPieData} />
+                <OtherPanelPieChart data={otherPanelPieData} />
               </div>
 
             </>
