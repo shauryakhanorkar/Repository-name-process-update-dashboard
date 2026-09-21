@@ -36,8 +36,10 @@ interface CustomerProgress {
   currentProcess: string;
   status: string;
   processUpdates: Record<string, ProjectUpdate>;
+  processStatuses: Record<string, 'DONE' | 'IN PROGRESS' | 'PENDING' | 'UPCOMING'>;
   latestUpdate: ProjectUpdate;
   latestTimestamp: string;
+  latestProcessOrder: number;
 }
 
 function getTimestampValue(update: ProjectUpdate) {
@@ -60,6 +62,82 @@ function isInProgressStatus(status: string): boolean {
   return normalizedStatus === 'in progress' || normalizedStatus === 'in-progress' || normalizedStatus === 'inprogress';
 }
 
+function isRealSubmittedUpdate(update: ProjectUpdate): boolean {
+  if (!isActualSubmittedUpdate(update)) return false;
+
+  const formName = update.formName?.trim().toLowerCase();
+  return formName !== 'auto-generated placeholder' && formName !== 'auto-marked (prior stage)';
+}
+
+function getCanonicalProcessOrder(process: string): number {
+  const index = PROCESSES.indexOf(process);
+  return index >= 0 ? index + 1 : 0;
+}
+
+function isLaterProcessUpdate(update: ProjectUpdate, current: ProjectUpdate | undefined): boolean {
+  if (!current) return true;
+
+  const processOrderDifference =
+    getCanonicalProcessOrder(update.process) - getCanonicalProcessOrder(current.process);
+  if (processOrderDifference !== 0) return processOrderDifference > 0;
+
+  return getTimestampValue(update) > getTimestampValue(current);
+}
+
+function getProcessStatus(status: string): 'DONE' | 'IN PROGRESS' | 'PENDING' {
+  if (isCompletedStatus(status)) return 'DONE';
+  if (isInProgressStatus(status)) return 'IN PROGRESS';
+  return 'PENDING';
+}
+
+function getProjectProcessStatuses(rows: ProjectUpdate[]) {
+  // Only REAL submitted rows drive the timeline. Placeholders never set "latest".
+  const realRows = rows.filter(
+    (row) => isRealSubmittedUpdate(row) && PROCESSES.includes(row.process)
+  );
+  const latestByProcess = realRows.reduce<Record<string, ProjectUpdate>>((latest, row) => {
+    const current = latest[row.process];
+    if (!current || getTimestampValue(row) > getTimestampValue(current)) {
+      latest[row.process] = row;
+    }
+    return latest;
+  }, {});
+
+  // Highest canonical stage among real rows (not DB process_order, not placeholders).
+  const latestProcessOrder = realRows.reduce(
+    (max, row) => Math.max(max, getCanonicalProcessOrder(row.process)),
+    0
+  );
+  const latestRealUpdate = latestProcessOrder > 0
+    ? latestByProcess[PROCESSES[latestProcessOrder - 1]]
+    : undefined;
+
+  const processStatuses = PROCESSES.reduce<Record<string, 'DONE' | 'IN PROGRESS' | 'PENDING' | 'UPCOMING'>>(
+    (statuses, process, index) => {
+      const processOrder = index + 1;
+      const processUpdate = latestByProcess[process];
+
+      statuses[process] = processOrder < latestProcessOrder
+        ? 'DONE'
+        : processOrder > latestProcessOrder
+          ? 'UPCOMING'
+          : processUpdate
+            ? getProcessStatus(processUpdate.status)
+            : 'UPCOMING';
+
+      return statuses;
+    },
+    {}
+  );
+
+  return {
+    latestByProcess,
+    latestRealUpdate,
+    latestProcessOrder,
+    processStatuses,
+  };
+}
+
 export default function ProcessPivotTable({
   data,
   allData,
@@ -73,7 +151,7 @@ export default function ProcessPivotTable({
   ).sort((left, right) => left.localeCompare(right)), [data]);
 
   const selectedDateUpdates = useMemo(() => data.filter(
-    (item) => isActualSubmittedUpdate(item) && businessDateKey(item) === selectedDate &&
+    (item) => isRealSubmittedUpdate(item) && businessDateKey(item) === selectedDate &&
       (selectedCustomer === 'All Customers' || item.customerName.trim() === selectedCustomer)
   ), [data, selectedCustomer, selectedDate]);
 
@@ -84,41 +162,25 @@ export default function ProcessPivotTable({
       if (!PROCESSES.includes(item.process)) return;
       const projectKey = getProjectKey(item);
       const current = selectedProjects.get(projectKey);
-      if (!current || getTimestampValue(item) > getTimestampValue(current) || (
-        getTimestampValue(item) === getTimestampValue(current) &&
-        (item.processOrder ?? 0) > (current.processOrder ?? 0)
-      )) {
+      if (isLaterProcessUpdate(item, current)) {
         selectedProjects.set(projectKey, item);
       }
     });
 
     return Array.from(selectedProjects.entries())
       .map(([rowKey, selectedProject]) => {
+        // Full S.O. history (all dates) — prior real stages must count as DONE.
         const updates = allData.filter((item) =>
-          isActualSubmittedUpdate(item) &&
           getProjectKey(item) === rowKey &&
-          businessDateKey(item) === selectedDate &&
           PROCESSES.includes(item.process)
         );
-        const sortedUpdates = [...updates].sort((left, right) => {
-          const timestampDifference = getTimestampValue(right) - getTimestampValue(left);
-
-          if (timestampDifference !== 0) return timestampDifference;
-
-          return (right.processOrder ?? 0) - (left.processOrder ?? 0);
-        });
-
-        const latestUpdate = sortedUpdates[0];
-        const processUpdates = updates.reduce<Record<string, ProjectUpdate>>((latestByProcess, update) => {
-          const current = latestByProcess[update.process];
-          if (!current || getTimestampValue(update) > getTimestampValue(current) || (
-            getTimestampValue(update) === getTimestampValue(current) &&
-            (update.processOrder ?? 0) > (current.processOrder ?? 0)
-          )) {
-            latestByProcess[update.process] = update;
-          }
-          return latestByProcess;
-        }, {});
+        const {
+          latestByProcess,
+          latestRealUpdate,
+          latestProcessOrder,
+          processStatuses,
+        } = getProjectProcessStatuses(updates);
+        const latestUpdate = latestRealUpdate || selectedProject;
 
         return {
           rowKey,
@@ -127,9 +189,11 @@ export default function ProcessPivotTable({
           panel: latestUpdate.panelName.trim() || latestUpdate.panelType.trim() || latestUpdate.otherPanelTypes.trim(),
           currentProcess: latestUpdate.process,
           status: latestUpdate.status,
-          processUpdates,
+          processUpdates: latestByProcess,
+          processStatuses,
           latestUpdate,
           latestTimestamp: latestUpdate.timestamp || latestUpdate.date,
+          latestProcessOrder,
         };
       })
       .sort((left, right) => {
@@ -192,7 +256,6 @@ export default function ProcessPivotTable({
 
           <div className="divide-y divide-slate-100">
             {customerProgress.map((customer) => {
-              const currentIndex = PROCESSES.indexOf(customer.currentProcess);
               const tooltip = [
                 `Customer Name: ${customer.customerName}`,
                 `S.O. Number: ${customer.soNumber || 'Not available'}`,
@@ -224,21 +287,11 @@ export default function ProcessPivotTable({
                   </div>
                   <div className="px-2">
                     <div className="grid min-h-[30px] grid-cols-6 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                      {PROCESSES.map((process, index) => {
-                        const processUpdate = customer.processUpdates[process];
-                        const latestProcessIsCompleted = isCompletedStatus(customer.status);
-                        const latestProcessIsInProgress = isInProgressStatus(customer.status);
-                        const isBeforeCurrent = index < currentIndex;
-                        const isCurrent = index === currentIndex;
-                        const isCompleted = isBeforeCurrent || (isCurrent && latestProcessIsCompleted);
-                        const isInProgress = isCurrent && latestProcessIsInProgress;
-                        const statusLabel = isCompleted
-                          ? 'DONE'
-                          : isInProgress
-                            ? 'IN PROGRESS'
-                            : isCurrent
-                              ? 'CURRENT'
-                              : 'UPCOMING';
+                      {PROCESSES.map((process) => {
+                        const statusLabel = customer.processStatuses[process];
+                        const isCompleted = statusLabel === 'DONE';
+                        const isInProgress = statusLabel === 'IN PROGRESS';
+                        const isCurrent = process === customer.currentProcess;
 
                         return (
                           <div

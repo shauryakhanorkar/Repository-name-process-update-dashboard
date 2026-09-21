@@ -77,14 +77,47 @@ function latestUpdate(updates: ProjectUpdate[]): ProjectUpdate | null {
   }, null);
 }
 
+function isRealSubmittedUpdate(update: ProjectUpdate): boolean {
+  if (!isActualSubmittedUpdate(update)) return false;
+
+  const formName = update.formName?.trim().toLowerCase();
+  return formName !== 'auto-generated placeholder' && formName !== 'auto-marked (prior stage)';
+}
+
+function getCanonicalProcessOrder(process: string): number {
+  const index = PRODUCTION_STAGES.indexOf(normalizeProcess(process) as ProductionStage);
+  return index >= 0 ? index + 1 : 0;
+}
+
+/** Highest REAL submitted process for an S.O. (placeholders ignored). */
+function getLatestRealProductionUpdate(updates: ProjectUpdate[]): ProjectUpdate | null {
+  return updates
+    .filter(
+      (update) =>
+        isRealSubmittedUpdate(update) &&
+        PRODUCTION_STAGES.includes(normalizeProcess(update.process) as ProductionStage),
+    )
+    .reduce<ProjectUpdate | null>((latest, update) => {
+      if (!latest) return update;
+
+      const orderDifference =
+        getCanonicalProcessOrder(update.process) - getCanonicalProcessOrder(latest.process);
+      if (orderDifference !== 0) return orderDifference > 0 ? update : latest;
+
+      return getUpdateTime(update) >= getUpdateTime(latest) ? update : latest;
+    }, null);
+}
+
 function getOrderStatus(order: ProductionOrder): string {
   return order.lastUpdated?.status || order.updates[order.updates.length - 1]?.status || 'Pending';
 }
 
 function getProcessUpdate(order: ProductionOrder, stage: ProductionStage): ProjectUpdate | null {
-  return latestUpdate(
-    order.productionUpdates.filter((update) => normalizeProcess(update.process) === stage),
+  const stageUpdates = order.productionUpdates.filter(
+    (update) => normalizeProcess(update.process) === stage,
   );
+  const realStageUpdates = stageUpdates.filter(isRealSubmittedUpdate);
+  return latestUpdate(realStageUpdates.length ? realStageUpdates : stageUpdates);
 }
 
 type ProcessCardStatus = 'Completed' | 'Current Process' | 'Upcoming';
@@ -98,13 +131,14 @@ function getProcessCardStatus(
   if (!currentProcess) return update ? 'Completed' : 'Upcoming';
 
   const currentIndex = PRODUCTION_STAGES.indexOf(currentProcess);
-  if (stage === currentProcess) {
-    return update?.status === 'Done' || update?.status === 'Completed'
-      ? 'Completed'
-      : 'Current Process';
-  }
-  if (stageIndex < currentIndex && update) return 'Completed';
-  return 'Upcoming';
+
+  // Any stage before the highest REAL process is DONE — even with no row of its own.
+  if (stageIndex < currentIndex) return 'Completed';
+  if (stageIndex > currentIndex) return 'Upcoming';
+
+  const status = update?.status?.trim().toLowerCase() || '';
+  if (status === 'done' || status === 'completed') return 'Completed';
+  return 'Current Process';
 }
 
 function expectedDateLabel(): string {
@@ -240,7 +274,11 @@ export default function ProductionPage({ data, selectedSONumber: requestedSONumb
           isActualSubmittedUpdate(update) &&
           PRODUCTION_STAGES.includes(normalizeProcess(update.process) as ProductionStage),
         );
-        const lastUpdated = latestUpdate(productionUpdates) || latestUpdate(updates);
+        // Current process = highest REAL process_order, not newest timestamp / placeholder.
+        const lastUpdated =
+          getLatestRealProductionUpdate(updates) ||
+          latestUpdate(productionUpdates) ||
+          latestUpdate(updates);
         const currentProcess = (normalizeProcess(lastUpdated?.process || '') as ProductionStage);
 
         return {
